@@ -211,3 +211,5 @@ __marimo__/
 eval/agent_checkpoints/
 eval/outputs/
 eval/logs
+results/
+wandb/

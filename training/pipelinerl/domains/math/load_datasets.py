@@ -19,7 +19,9 @@ and this will not parse:
 """
 
 
-QED_DATASETS = ["lm-provers/Olympiads-RL"]
+QED_DATASETS = ["lm-provers/Olympiads-RL", "lm-provers/FineProofs-RL", "lm-provers/FineProofs-RL-test"]
+
+PROOFBENCH_DATASETS = ["lm-provers/ProofBench"]
 
 logger = logging.getLogger(__name__)
 
@@ -35,11 +37,15 @@ def process_proof_problem(dataset, dataset_name):
 
 def process_proofbench_problem(dataset, dataset_name):
     for row in dataset:
+        # Support both old (capitalized) and new (lowercase) ProofBench column names
+        problem = row.get("Problem") or row.get("problem", "")
+        solution = row.get("Solution") or row.get("solution", "")
+        schema = row.get("Grading guidelines") or row.get("grading_scheme", "")
         yield {
             "dataset": dataset_name,
-            "task": row["Problem"],           # problem statement
-            "answer": row["Solution"],        # reference solution
-            "schema": row["Grading guidelines"],        # marking scheme
+            "task": problem,
+            "answer": solution,
+            "schema": schema,
         }
 
 def process_eurus(dataset):
@@ -258,7 +264,7 @@ def load_datasets(
             if not hub_id:
                 raise ValueError("Hub dataset specs must include a 'hub_id' field.")
             config = dataset_spec.get("config")
-            split = dataset_spec.get("split", "train")
+            split = str(dataset_spec.get("split", "train"))
             trust_remote_code = dataset_spec.get("trust_remote_code", True)
             load_args: Tuple[Any, ...] = (hub_id,)
             if config is not None:
@@ -266,6 +272,8 @@ def load_datasets(
             dataset = load_dataset(*load_args, split=split, trust_remote_code=trust_remote_code)
             if hub_id in QED_DATASETS:
                 samples = [s for s in process_proof_problem(dataset, hub_id.split("/")[-1]) if s is not None]
+            elif hub_id in PROOFBENCH_DATASETS:
+                samples = [s for s in process_proofbench_problem(dataset, hub_id.split("/")[-1]) if s is not None]
             else:
                 samples = [dict(row) for row in dataset]
             for sample in samples:
