@@ -95,6 +95,7 @@ def make_worker_class(multi_step: bool):
                     loaded_params = self.model_runner.model.load_weights(weights=[(info.name, buffer)])
                 if len(loaded_params) != 1:
                     raise ValueError(f"model {info.name} not found in model state dict")
+            torch.cuda.synchronize(self.device)
             logger.info("Weight update received")
 
     return NewWorkerClass

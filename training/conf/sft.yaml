@@ -9,7 +9,7 @@ defaults:
     - base
     - _self_
 
-model_path: violetxi/exp_stage1_qwen3-4b_pr_delta_process
+model_path: violetxi/exp-stage1-sft
 model_revision: main
 
 eval_every_n_versions: 12800
