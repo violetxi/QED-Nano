@@ -50,7 +50,7 @@ gradient_checkpointing: true
 reentrant_checkpointing: false
 # Number of training steps passed to LR scheduler,
 # also the maximum number of steps if interrupt_train_steps is -1
-max_train_steps: 100000
+max_train_steps: 510
 # Set interrupt_train_steps to the number of steps after which to interrupt training.
 # Using interrupt_train_steps is useful for stopping training before max_train_steps
 # is reached without affecting the LR scheduler.
