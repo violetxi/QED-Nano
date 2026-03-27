@@ -7,11 +7,21 @@ OUTPUT_PREFIX="outputs/stage2-qwen3-4b-grpo"
 PORT=8000
 
 export VLLM_API_KEY=token-abc123
+export NCCL_DEBUG=WARN
+export NCCL_IB_DISABLE=1
+export NCCL_P2P_DISABLE=0
+export CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7
+export UV_PYTHON=3.13
 
 cleanup() {
   echo "=== Stopping vLLM server ==="
+  if [ -n "${VLLM_PID:-}" ]; then
+    kill -- -${VLLM_PID} 2>/dev/null || true
+    sleep 2
+    kill -9 -- -${VLLM_PID} 2>/dev/null || true
+  fi
   pkill -f "vllm.entrypoints.openai.api_server --model ${MODEL}" 2>/dev/null || true
-  sleep 2
+  sleep 1
   pkill -9 -f "vllm.entrypoints.openai.api_server --model ${MODEL}" 2>/dev/null || true
 }
 trap cleanup EXIT
@@ -22,7 +32,7 @@ pkill -f "vllm.entrypoints.openai.api_server.*--port ${PORT}" 2>/dev/null || tru
 sleep 3
 
 echo "=== Starting vLLM server for ${MODEL} ==="
-python -m vllm.entrypoints.openai.api_server \
+setsid python -m vllm.entrypoints.openai.api_server \
   --model "${MODEL}" \
   --host 0.0.0.0 \
   --port ${PORT} \
@@ -58,38 +68,38 @@ if [ "${SERVER_READY}" = false ]; then
   exit 1
 fi
 
-echo "=== Running IMOProofBench generation ==="
-/home/violet/.local/bin/uv run python scripts/run.py \
-  --model-config "${CONFIG}" \
-  --output-path "${OUTPUT_PREFIX}-imoproofbench.jsonl" \
-  --overwrite \
-  --n 32
+# echo "=== Running IMOProofBench generation ==="
+# uv run python scripts/run.py \
+#   --model-config "${CONFIG}" \
+#   --output-path "${OUTPUT_PREFIX}-imoproofbench.jsonl" \
+#   --overwrite \
+#   --n 4
 
-# echo "=== Grading IMOProofBench ==="
-# /home/violet/.local/bin/uv run python scripts/eval.py \
-#   --model-config openai/gpt-51 \
-#   --data-path "${OUTPUT_PREFIX}-imoproofbench.jsonl" \
-#   --output-path "${OUTPUT_PREFIX}-imoproofbench-graded.jsonl"
+echo "=== Grading IMOProofBench ==="
+uv run python scripts/eval.py \
+  --model-config openai/gpt-51 \
+  --data-path "${OUTPUT_PREFIX}-imoproofbench.jsonl" \
+  --output-path "${OUTPUT_PREFIX}-imoproofbench-graded.jsonl"
 
-# echo "=== IMOProofBench Stats ==="
-# /home/violet/.local/bin/uv run python scripts/stats.py "${OUTPUT_PREFIX}-imoproofbench-graded.jsonl"
+echo "=== IMOProofBench Stats ==="
+uv run python scripts/stats.py "${OUTPUT_PREFIX}-imoproofbench-graded.jsonl"
 
 echo "=== Running ProofBench generation ==="
-/home/violet/.local/bin/uv run python scripts/run.py \
+uv run python scripts/run.py \
   --model-config "${CONFIG}" \
   --data-path lm-provers/ProofBench \
   --output-path "${OUTPUT_PREFIX}-proofbench.jsonl" \
   --overwrite \
-  --n 32
+  --n 4
 
-# echo "=== Grading ProofBench ==="
-# /home/violet/.local/bin/uv run python scripts/eval.py \
-#   --model-config openai/gpt-51 \
-#   --data-path "${OUTPUT_PREFIX}-proofbench.jsonl" \
-#   --output-path "${OUTPUT_PREFIX}-proofbench-graded.jsonl" \
-#   --proofbench
+echo "=== Grading ProofBench ==="
+uv run python scripts/eval.py \
+  --model-config openai/gpt-51 \
+  --data-path "${OUTPUT_PREFIX}-proofbench.jsonl" \
+  --output-path "${OUTPUT_PREFIX}-proofbench-graded.jsonl" \
+  --proofbench
 
-# echo "=== ProofBench Stats ==="
-# /home/violet/.local/bin/uv run python scripts/stats.py "${OUTPUT_PREFIX}-proofbench-graded.jsonl"
+echo "=== ProofBench Stats ==="
+uv run python scripts/stats.py "${OUTPUT_PREFIX}-proofbench-graded.jsonl"
 
 echo "Done: ${MODEL}"

@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(nvidia-smi:*)",
+      "Bash(find /hai/scratch/ziyxiang/QED-Nano -name run_dense_process* -o -name *dense_process*.sh)",
+      "Bash(chmod:*)",
+      "Bash(du:*)",
+      "Bash(ls:*)",
+      "Bash(for dir:*)",
+      "Bash(do echo:*)"
+    ]
+  }
+}

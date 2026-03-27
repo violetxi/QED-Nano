@@ -7,6 +7,6 @@ export OPENAI_API_KEY="${OPENROUTER_API_KEY:?Set OPENROUTER_API_KEY before runni
 export OPENAI_BASE_URL="https://openrouter.ai/api/v1"
 
 python -m pipelinerl.launch \
-  --config-name=self_distill \
+  --config-name=self_distill_cont \
   wandb.wandb_project_name=prl-proof-qwen4b-instruct \
-  output_dir=results/self_distill
+  output_dir=results/self_distill_cont
