@@ -3,9 +3,9 @@
 
 set -euo pipefail
 
-# Activate the qed conda environment
-eval "$(conda shell.bash hook)"
-conda activate qed
+# # Activate the qed conda environment
+# eval "$(conda shell.bash hook)"
+# conda activate qed
 
 # Remove nvhpc CUDA compat dir from LD_LIBRARY_PATH to avoid loading a stale
 # libcuda.so (555.42.02) that conflicts with the installed driver (565.57.01).
