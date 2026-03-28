@@ -18,6 +18,7 @@ preprocess:
   shared_memory_entry_size: 2000000000
 
 finetune:
+  max_train_steps: 192
   attempts: 16
   train_batch_size: 32
   valid_batch_size: 32
