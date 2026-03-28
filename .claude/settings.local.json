@@ -34,7 +34,8 @@
       "Bash(python -c \"from huggingface_hub import HfApi; print\\(''HfApi available''\\)\")",
       "Bash(python:*)",
       "Bash(grep -r \"config-name\\\\|config_name\" /hai/scratch/ziyxiang/QED-Nano/training/pipelinerl/*.py)",
-      "Bash(find /hai/scratch/ziyxiang/QED-Nano/training -type f -name *.log)"
+      "Bash(find /hai/scratch/ziyxiang/QED-Nano/training -type f -name *.log)",
+      "Bash(conda run:*)"
     ]
   }
 }
