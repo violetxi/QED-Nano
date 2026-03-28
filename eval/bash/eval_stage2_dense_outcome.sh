@@ -33,9 +33,9 @@ sleep 3
 
 echo "=== Starting vLLM server for ${MODEL} ==="
 setsid python -m vllm.entrypoints.openai.api_server \
-  --model "${MODEL}" \
+  --model violetxi/exp_stage2_proof_qwen3-4b_dense_outcome \
   --host 0.0.0.0 \
-  --port ${PORT} \
+  --port 8000 \
   --dtype bfloat16 \
   --max-model-len 49152 \
   --gpu-memory-utilization 0.8 \
