@@ -213,3 +213,4 @@ eval/outputs/
 eval/logs
 results/
 wandb/
+.claude/

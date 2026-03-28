@@ -133,4 +133,5 @@ world:
   finetune_fraction: 2
   env_replicas: 1
   actor_group_port: 9000
+  actor_start_port: 8180
   environment_start_port: 7777

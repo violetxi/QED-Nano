@@ -240,7 +240,7 @@ def run_actor_llm(
         "--host",
         "0.0.0.0",
         "--port",
-        str(8080 + local_idx),
+        str(getattr(cfg.world, "actor_start_port", 8080) + local_idx),
         "--seed",
         str(cfg.seed + actor_llm_idx),
         "--actor-llm-idx",

@@ -4,6 +4,8 @@
 #SBATCH -A marlowe-m000237-free
 #SBATCH --nodes=1
 #SBATCH -G 8
+#SBATCH --mem=512G
+#SBATCH --cpus-per-task=32
 #SBATCH --time=2-00:00:00
 #SBATCH --output=logs/dev_node_%j.out
 #SBATCH --error=logs/dev_node_%j.err

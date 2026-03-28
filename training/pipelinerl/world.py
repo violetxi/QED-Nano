@@ -373,8 +373,9 @@ class WorldMap:
                     url=llm_url,
                 )
         
-        # Place regular actor LLMs (port 8080+)
+        # Place regular actor LLMs (port actor_start_port+)
         # Note: replica_idx must be offset by total_rc_actor_llms for NCCL group rank calculation
+        actor_start_port = getattr(cfg.world, "actor_start_port", 8080)
         for _ in range(cfg.world.replicas):
             for actor_llm_idx in range(self.llms_per_actor):
                 node = next(
@@ -384,15 +385,15 @@ class WorldMap:
                     raise ValueError("Not enough gpus to place all actor LLMs")
                 gpus = [self.available_gpus[node].pop() for _ in range(self.gpus_per_actor_llm)]
                 local_idx = min(gpus)
-                llm_url = f"http://{self.address_map[node]}:{8080 + local_idx}"
-                logger.info(f"Placing actor LLM {actor_llm_idx} on node {node} at port {8080 + local_idx} with URL {llm_url}")
+                llm_url = f"http://{self.address_map[node]}:{actor_start_port + local_idx}"
+                logger.info(f"Placing actor LLM {actor_llm_idx} on node {node} at port {actor_start_port + local_idx} with URL {llm_url}")
                 self.add_job(
                     kind="actor_llm",
                     replica_idx=self.total_rc_actor_llms + actor_llm_idx,  # Offset by RC actor LLMs
                     local_idx=local_idx,
                     node_rank=node,
                     gpus=gpus,
-                    port=8080 + local_idx,
+                    port=actor_start_port + local_idx,
                     url=llm_url,
                 )
         

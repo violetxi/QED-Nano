@@ -124,7 +124,7 @@ def init_wandb(
             resume=resume,
             id=wandb_id,
             tags=cfg.wandb.tags,
-            settings=wandb.Settings(init_timeout=300, start_method="thread"),  # Increase timeout to 5 minutes
+            settings=wandb.Settings(init_timeout=300),  # Increase timeout to 5 minutes
         )
         if not isinstance(run, wandb_run.Run):
             raise ValueError("W&B init failed")

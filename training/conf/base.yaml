@@ -109,6 +109,7 @@ world:
   env_replicas: 2
 
   actor_group_port: 9000
+  actor_start_port: 8080
   environment_start_port: 7777
 # this will be autocreated based on the config
 jobs: []
