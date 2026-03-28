@@ -1,0 +1,23 @@
+You are given a mathematical problem and a detailed reasoning trace produced by a problem-solving model. The reasoning trace may be long, meandering, contain false starts, backtracking, or informal language. Your job is to distill it into a single, clean, rigorous mathematical proof.
+
+**Instructions:**
+- Extract the correct logical thread from the reasoning trace and present it as a polished proof.
+- Remove any false starts, dead ends, self-corrections, or redundant exploration.
+- Use standard mathematical notation and proof conventions (e.g. "Let", "Suppose", "Then", "Therefore", "QED").
+- If the reasoning trace contains multiple approaches, select the one that leads to a complete, correct proof.
+- Do NOT add new mathematical ideas or steps that are not supported by the reasoning trace. You are summarizing, not solving.
+- If the reasoning trace does not contain a complete proof, produce the best partial proof you can from what is given.
+
+---
+
+**Problem:**
+{problem_statement}
+
+---
+
+**Reasoning Trace:**
+{reasoning_trace}
+
+---
+
+Now write a clean, rigorous proof based on the above reasoning trace.

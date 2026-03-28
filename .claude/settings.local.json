@@ -21,6 +21,20 @@
       "Bash(ssh -t n15 'export OPENROUTER_API_KEY=\"\"\"\"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\"\"\"\" && cd /scratch/m000237/ziyxiang/QED-Nano/training && source /projects/m000237/ziyxiang/miniconda3/etc/profile.d/conda.sh && conda activate qed && bash run_self_distill.sh')",
       "Bash(ssh -t n18 'export OPENROUTER_API_KEY=\"\"\"\"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\"\"\"\" && cd /scratch/m000237/ziyxiang/QED-Nano/training && source /projects/m000237/ziyxiang/miniconda3/etc/profile.d/conda.sh && conda activate qed && bash run_self_distill.sh')",
       "Bash(ssh n18:*)"
+      "Bash(kill 1370841 1370842)",
+      "Bash(kill -9 1370841 1370842)",
+      "Bash(python3 -c \"import sys,json; d=json.loads\\(sys.stdin.readline\\(\\)\\); print\\([k for k in d.keys\\(\\)]\\)\")",
+      "Read(//tmp/**)",
+      "Bash(uv run:*)",
+      "Bash(VLLM_API_KEY=token-abc123 uv run python scripts/run_summary.py --model-config vllm/vllm-violetxi-stage2-qwen3-4b-dense-outcome --generation-path outputs/stage2-qwen3-4b-dense-outcome-imoproofbench.jsonl --output-path outputs/stage2-qwen3-4b-dense-outcome-imoproofbench-summary.jsonl --n 4)",
+      "Bash(export VLLM_API_KEY=token-abc123)",
+      "Bash(python scripts/run_summary.py --model-config vllm/vllm-violetxi-stage2-qwen3-4b-dense-outcome --generation-path outputs/stage2-qwen3-4b-dense-outcome-imoproofbench.jsonl --output-path outputs/stage2-qwen3-4b-dense-outcome-imoproofbench-summary.jsonl --n 4)",
+      "Bash(python3 -c \"import sys,json; d=json.loads\\(sys.stdin.readline\\(\\)\\); print\\(''''model_solution length:'''', len\\(d.get\\(''''model_solution'''',''''''''\\)\\)\\); print\\(''''reasoning_trace length:'''', len\\(d.get\\(''''reasoning_trace'''',''''''''\\)\\)\\); print\\(''''model_solution preview:'''', d.get\\(''''model_solution'''',''''''''\\)[:200]\\)\")",
+      "Bash(pip show:*)",
+      "Bash(python -c \"from huggingface_hub import HfApi; print\\(''HfApi available''\\)\")",
+      "Bash(python:*)",
+      "Bash(grep -r \"config-name\\\\|config_name\" /hai/scratch/ziyxiang/QED-Nano/training/pipelinerl/*.py)",
+      "Bash(find /hai/scratch/ziyxiang/QED-Nano/training -type f -name *.log)"
     ]
   }
 }
