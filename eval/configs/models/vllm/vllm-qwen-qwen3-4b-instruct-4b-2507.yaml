@@ -3,11 +3,8 @@ model_revision: "main"
 api: custom
 api_key_env: VLLM_API_KEY
 base_url: http://localhost:8000/v1
-max_tokens: 28672
-prompt_margin: 512
-delimiters:
-- </think>  # covers most reasoning models
-- final<|message|> # gpt-oss models
+max_tokens: 16384
+temperature: 0.8
 read_cost: 0.0
 write_cost: 0.0
 concurrent_requests: 1024
