@@ -37,11 +37,11 @@ python -m vllm.entrypoints.openai.api_server \
 #   --overwrite \
 #   --n 16
 
-# 2b: Grade summarized IMOProofBench
-uv run python scripts/eval.py \
-  --model-config openai/gpt-5.4-nano \
-  --data-path outputs/stage1-qwen3-4b-grpo-imoproofbench-summary.jsonl \
-  --output-path outputs/stage1-qwen3-4b-grpo-imoproofbench-summary-graded.jsonl
+# # 2b: Grade summarized IMOProofBench
+# uv run python scripts/eval.py \
+#   --model-config openai/gpt-5.4-nano \
+#   --data-path outputs/stage1-qwen3-4b-grpo-imoproofbench-summary.jsonl \
+#   --output-path outputs/stage1-qwen3-4b-grpo-imoproofbench-summary-graded.jsonl
 
 # 2c: IMOProofBench stats
 uv run python scripts/stats.py outputs/stage1-qwen3-4b-grpo-imoproofbench-summary-graded.jsonl
