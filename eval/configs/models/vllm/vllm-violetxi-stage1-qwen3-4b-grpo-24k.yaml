@@ -3,7 +3,7 @@ model_revision: "main"
 api: custom
 api_key_env: VLLM_API_KEY
 base_url: http://localhost:8000/v1
-max_tokens: 32768
+max_tokens: 24576
 temperature: 0.8
 read_cost: 0.0
 write_cost: 0.0
