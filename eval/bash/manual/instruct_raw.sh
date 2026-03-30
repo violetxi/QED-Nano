@@ -32,7 +32,7 @@ python -m vllm.entrypoints.openai.api_server \
 
 # 2a: IMOProofBench generation
 uv run python scripts/run.py \
-  --model-config vllm/vllm-violetxi-stage2-qwen3-4b-instruct-raw \
+  --model-config vllm/vllm-qwen-qwen3-4b-instruct-4b-2507 \
   --output-path outputs/stage2-qwen3-4b-instruct-raw-imoproofbench.jsonl \
   --overwrite \
   --n 32
@@ -48,7 +48,7 @@ uv run python scripts/stats.py outputs/stage2-qwen3-4b-instruct-raw-imoproofbenc
 
 # # 2d: ProofBench generation
 uv run python scripts/run.py \
-  --model-config vllm/vllm-violetxi-stage2-qwen3-4b-instruct-raw \
+  --model-config vllm/vllm-qwen-qwen3-4b-instruct-4b-2507 \
   --data-path lm-provers/ProofBench \
   --output-path outputs/stage2-qwen3-4b-instruct-raw-proofbench.jsonl \
   --overwrite \
