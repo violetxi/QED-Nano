@@ -35,7 +35,7 @@ uv run python scripts/run.py \
   --model-config vllm/vllm-qwen-qwen3-4b-instruct-4b-2507 \
   --output-path outputs/stage2-qwen3-4b-instruct-raw-imoproofbench.jsonl \
   --overwrite \
-  --n 32
+  --n 16
 
 # 2b: Grade IMOProofBench
 uv run python scripts/eval.py \
@@ -52,7 +52,7 @@ uv run python scripts/run.py \
   --data-path lm-provers/ProofBench \
   --output-path outputs/stage2-qwen3-4b-instruct-raw-proofbench.jsonl \
   --overwrite \
-  --n 32
+  --n 16
 
 # 2e: Grade ProofBench
 uv run python scripts/eval.py \

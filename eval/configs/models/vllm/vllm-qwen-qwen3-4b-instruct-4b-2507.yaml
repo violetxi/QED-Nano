@@ -10,6 +10,6 @@ delimiters:
 - final<|message|> # gpt-oss models
 read_cost: 0.0
 write_cost: 0.0
-concurrent_requests: 16
+concurrent_requests: 1024
 human_readable_id: Qwen/Qwen3-4B-Instruct-2507
 date: "2026-02-11"
