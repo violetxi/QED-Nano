@@ -91,7 +91,7 @@ uv run python scripts/run_summary.py \
   --data-path lm-provers/ProofBench \
   --output-path outputs/stage1-qwen3-4b-dense-outcome-proofbench-summary-24k.jsonl \
   --overwrite \
-  --n 16
+  --n 16 \
   --summary-max-tokens 16384
 
 # 3e: Grade summarized ProofBench (24k)

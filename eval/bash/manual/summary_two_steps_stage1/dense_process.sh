@@ -73,7 +73,7 @@ uv run python scripts/run_summary.py \
   --model-config vllm/vllm-violetxi-stage1-qwen3-4b-dense-process-24k \
   --output-path outputs/stage1-qwen3-4b-dense-process-imoproofbench-summary-24k.jsonl \
   --overwrite \
-  --n 16
+  --n 16 \
   --summary-max-tokens 16384
 
 # 3b: Grade summarized IMOProofBench (24k)
@@ -91,7 +91,7 @@ uv run python scripts/run_summary.py \
   --data-path lm-provers/ProofBench \
   --output-path outputs/stage1-qwen3-4b-dense-process-proofbench-summary-24k.jsonl \
   --overwrite \
-  --n 16
+  --n 16 \
   --summary-max-tokens 16384
 
 # 3e: Grade summarized ProofBench (24k)

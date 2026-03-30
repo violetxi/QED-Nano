@@ -55,7 +55,7 @@ uv run python scripts/run_summary.py \
   --model-config vllm/vllm-violetxi-stage1-qwen3-4b-grpo-24k \
   --output-path outputs/stage1-qwen3-4b-grpo-imoproofbench-summary-24k.jsonl \
   --overwrite \
-  --n 16
+  --n 16 \
   --summary-max-tokens 16384
 
 # 3b: Grade summarized IMOProofBench (24k)

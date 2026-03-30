@@ -73,7 +73,7 @@ uv run python scripts/run_summary.py \
   --model-config vllm/vllm-qwen-qwen3-4b-instruct-4b-2507-24k \
   --output-path outputs/stage2-qwen3-4b-instruct-raw-imoproofbench-summary-24k.jsonl \
   --overwrite \
-  --n 16
+  --n 16 \
   --summary-max-tokens 16384
 
 # 3b: Grade summarized IMOProofBench (24k)
@@ -91,7 +91,7 @@ uv run python scripts/run_summary.py \
   --data-path lm-provers/ProofBench \
   --output-path outputs/stage2-qwen3-4b-instruct-raw-proofbench-summary-24k.jsonl \
   --overwrite \
-  --n 16
+  --n 16 \
   --summary-max-tokens 16384
 
 # 3e: Grade summarized ProofBench (24k)
