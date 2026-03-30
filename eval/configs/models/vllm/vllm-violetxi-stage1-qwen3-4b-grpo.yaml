@@ -1,0 +1,12 @@
+model: "violetxi/exp_stage1_qwen3-4b_grpo"
+model_revision: "main"
+api: custom
+api_key_env: VLLM_API_KEY
+base_url: http://localhost:8000/v1
+max_tokens: 16384
+temperature: 0.8
+read_cost: 0.0
+write_cost: 0.0
+concurrent_requests: 1024
+human_readable_id: violetxi/exp_stage1_qwen3-4b_grpo
+date: "2026-03-30"
