@@ -64,5 +64,45 @@ uv run python scripts/eval.py \
 # 2f: ProofBench stats
 uv run python scripts/stats.py outputs/stage2-qwen3-4b-instruct-proofbench-summary-graded.jsonl
 
-# Step 3: Kill the vLLM server (Ctrl+C in pane 1, or:)
+# ============================================================
+# 24k response length
+# ============================================================
+
+# 3a: IMOProofBench (generate + summarize, 24k)
+uv run python scripts/run_summary.py \
+  --model-config vllm/vllm-violetxi-stage2-qwen3-4b-24k \
+  --output-path outputs/stage2-qwen3-4b-instruct-imoproofbench-summary-24k.jsonl \
+  --overwrite \
+  --n 16 \
+  --summary-max-tokens 16384
+
+# 3b: Grade summarized IMOProofBench (24k)
+uv run python scripts/eval.py \
+  --model-config openai/gpt-5.4-nano \
+  --data-path outputs/stage2-qwen3-4b-instruct-imoproofbench-summary-24k.jsonl \
+  --output-path outputs/stage2-qwen3-4b-instruct-imoproofbench-summary-24k-graded.jsonl
+
+# 3c: IMOProofBench stats (24k)
+uv run python scripts/stats.py outputs/stage2-qwen3-4b-instruct-imoproofbench-summary-24k-graded.jsonl
+
+# 3d: ProofBench (generate + summarize, 24k)
+uv run python scripts/run_summary.py \
+  --model-config vllm/vllm-violetxi-stage2-qwen3-4b-24k \
+  --data-path lm-provers/ProofBench \
+  --output-path outputs/stage2-qwen3-4b-instruct-proofbench-summary-24k.jsonl \
+  --overwrite \
+  --n 16 \
+  --summary-max-tokens 16384
+
+# 3e: Grade summarized ProofBench (24k)
+uv run python scripts/eval.py \
+  --model-config openai/gpt-5.4-nano \
+  --data-path outputs/stage2-qwen3-4b-instruct-proofbench-summary-24k.jsonl \
+  --output-path outputs/stage2-qwen3-4b-instruct-proofbench-summary-24k-graded.jsonl \
+  --proofbench
+
+# 3f: ProofBench stats (24k)
+uv run python scripts/stats.py outputs/stage2-qwen3-4b-instruct-proofbench-summary-24k-graded.jsonl
+
+# Step 4: Kill the vLLM server (Ctrl+C in pane 1, or:)
 # pkill -f "vllm.entrypoints.openai.api_server --model violetxi/exp_stage2_proof_qwen3-4b_instruct"

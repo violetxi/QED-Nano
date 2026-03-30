@@ -74,6 +74,7 @@ uv run python scripts/stats.py outputs/stage1-qwen3-4b-dense-outcome-proofbench-
 #   --output-path outputs/stage1-qwen3-4b-dense-outcome-imoproofbench-summary-24k.jsonl \
 #   --overwrite \
 #   --n 16
+#   --summary-max-tokens 16384
 
 # 3b: Grade summarized IMOProofBench (24k)
 # uv run python scripts/eval.py \
@@ -91,6 +92,7 @@ uv run python scripts/run_summary.py \
   --output-path outputs/stage1-qwen3-4b-dense-outcome-proofbench-summary-24k.jsonl \
   --overwrite \
   --n 16
+  --summary-max-tokens 16384
 
 # 3e: Grade summarized ProofBench (24k)
 uv run python scripts/eval.py \

@@ -1,5 +1,5 @@
 #!/bin/bash
-# === Manual two-step eval (generate + summarize): self_distill ===
+# === Manual two-step eval (generate + summarize): grpo ===
 # Run from the eval/ directory: cd /hai/scratch/ziyxiang/QED-Nano/eval
 # Activate env first: conda activate qed
 
@@ -16,7 +16,7 @@ export CC=/cm/local/apps/gcc/13.1.0/bin/gcc
 
 # Step 1: Start vLLM server (runs in foreground — use a separate tmux pane)
 python -m vllm.entrypoints.openai.api_server \
-  --model violetxi/exp_stage2_proof_qwen3-4b_self_distill \
+  --model violetxi/exp_stage2_proof_qwen3-4b_grpo \
   --host 0.0.0.0 \
   --port 8000 \
   --dtype bfloat16 \
@@ -32,37 +32,40 @@ python -m vllm.entrypoints.openai.api_server \
 
 # 2a: IMOProofBench (generate + summarize)
 uv run python scripts/run_summary.py \
-  --model-config vllm/vllm-violetxi-stage2-qwen3-4b-self-distill \
-  --output-path outputs/stage2-qwen3-4b-self-distill-imoproofbench-summary.jsonl \
+  --model-config vllm/vllm-violetxi-stage2-qwen3-4b-grpo \
+  --output-path outputs/stage2-qwen3-4b-grpo-imoproofbench-summary.jsonl \
   --overwrite \
   --n 16
 
 # 2b: Grade summarized IMOProofBench
 uv run python scripts/eval.py \
   --model-config openai/gpt-5.4-nano \
-  --data-path outputs/stage2-qwen3-4b-self-distill-imoproofbench-summary.jsonl \
-  --output-path outputs/stage2-qwen3-4b-self-distill-imoproofbench-summary-graded.jsonl
+  --data-path outputs/stage2-qwen3-4b-grpo-imoproofbench-summary.jsonl \
+  --output-path outputs/stage2-qwen3-4b-grpo-imoproofbench-summary-graded.jsonl
 
 # 2c: IMOProofBench stats
-uv run python scripts/stats.py outputs/stage2-qwen3-4b-self-distill-imoproofbench-summary-graded.jsonl
+uv run python scripts/stats.py outputs/stage2-qwen3-4b-grpo-imoproofbench-summary-graded.jsonl
 
-# 2d: ProofBench (generate + summarize)
+# ============================================================
+# 24k response length
+# ============================================================
+
+# 3a: IMOProofBench (generate + summarize, 24k)
 uv run python scripts/run_summary.py \
-  --model-config vllm/vllm-violetxi-stage2-qwen3-4b-self-distill \
-  --data-path lm-provers/ProofBench \
-  --output-path outputs/stage2-qwen3-4b-self-distill-proofbench-summary.jsonl \
+  --model-config vllm/vllm-violetxi-stage2-qwen3-4b-grpo-24k \
+  --output-path outputs/stage2-qwen3-4b-grpo-imoproofbench-summary-24k.jsonl \
   --overwrite \
-  --n 16
+  --n 16 \
+  --summary-max-tokens 16384
 
-# 2e: Grade summarized ProofBench
+# 3b: Grade summarized IMOProofBench (24k)
 uv run python scripts/eval.py \
   --model-config openai/gpt-5.4-nano \
-  --data-path outputs/stage2-qwen3-4b-self-distill-proofbench-summary.jsonl \
-  --output-path outputs/stage2-qwen3-4b-self-distill-proofbench-summary-graded.jsonl \
-  --proofbench
+  --data-path outputs/stage2-qwen3-4b-grpo-imoproofbench-summary-24k.jsonl \
+  --output-path outputs/stage2-qwen3-4b-grpo-imoproofbench-summary-24k-graded.jsonl
 
-# 2f: ProofBench stats
-uv run python scripts/stats.py outputs/stage2-qwen3-4b-self-distill-proofbench-summary-graded.jsonl
+# 3c: IMOProofBench stats (24k)
+uv run python scripts/stats.py outputs/stage2-qwen3-4b-grpo-imoproofbench-summary-24k-graded.jsonl
 
-# Step 3: Kill the vLLM server (Ctrl+C in pane 1, or:)
-# pkill -f "vllm.entrypoints.openai.api_server --model violetxi/exp_stage2_proof_qwen3-4b_self_distill"
+# Step 4: Kill the vLLM server (Ctrl+C in pane 1, or:)
+# pkill -f "vllm.entrypoints.openai.api_server --model violetxi/exp_stage2_proof_qwen3-4b_grpo"
