@@ -35,7 +35,7 @@ uv run python scripts/run_summary.py \
   --model-config vllm/vllm-violetxi-stage2-qwen3-4b-grpo \
   --output-path outputs/stage2-qwen3-4b-grpo-imoproofbench-summary.jsonl \
   --overwrite \
-  --n 4
+  --n 16
 
 # 2b: Grade summarized IMOProofBench
 uv run python scripts/eval.py \

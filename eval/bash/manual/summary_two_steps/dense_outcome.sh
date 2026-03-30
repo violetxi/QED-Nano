@@ -35,7 +35,7 @@ uv run python scripts/run_summary.py \
   --model-config vllm/vllm-violetxi-stage2-qwen3-4b-dense-outcome \
   --output-path outputs/stage2-qwen3-4b-dense-outcome-imoproofbench-summary.jsonl \
   --overwrite \
-  --n 4
+  --n 16
 
 # 2b: Grade summarized IMOProofBench
 uv run python scripts/eval.py \
@@ -52,7 +52,7 @@ uv run python scripts/run_summary.py \
   --data-path lm-provers/ProofBench \
   --output-path outputs/stage2-qwen3-4b-dense-outcome-proofbench-summary.jsonl \
   --overwrite \
-  --n 4
+  --n 16
 
 # 2e: Grade summarized ProofBench
 uv run python scripts/eval.py \
