@@ -39,7 +39,7 @@ uv run python scripts/run_summary.py \
 
 # 2b: Grade reasoning trace for IMOProofBench
 uv run python scripts/eval.py \
-  --model-config openai/gpt-5.4-mini \
+  --model-config openai/gpt-5.4-nano \
   --data-path outputs/stage2-qwen3-4b-dense-process-imoproofbench-summary.jsonl \
   --output-path outputs/stage2-qwen3-4b-dense-process-imoproofbench-summary-reasoning-graded.jsonl \
   --model-solution-column reasoning_trace
