@@ -39,7 +39,7 @@ python -m vllm.entrypoints.openai.api_server \
 
 # # 2b: Grade summarized IMOProofBench
 # uv run python scripts/eval.py \
-#   --model-config openai/gpt-5.4-nano \
+#   --model-config openai/gpt-5-nano \
 #   --data-path outputs/stage1-qwen3-4b-grpo-imoproofbench-summary.jsonl \
 #   --output-path outputs/stage1-qwen3-4b-grpo-imoproofbench-summary-graded.jsonl
 
@@ -50,22 +50,63 @@ uv run python scripts/stats.py outputs/stage1-qwen3-4b-grpo-imoproofbench-summar
 # 24k response length
 # ============================================================
 
-# 3a: IMOProofBench (generate + summarize, 24k)
-uv run python scripts/run_summary.py \
-  --model-config vllm/vllm-violetxi-stage1-qwen3-4b-grpo-24k \
-  --output-path outputs/stage1-qwen3-4b-grpo-imoproofbench-summary-24k.jsonl \
-  --overwrite \
-  --n 16 \
-  --summary-max-tokens 16384
+# # 3a: IMOProofBench (generate + summarize, 24k)
+# uv run python scripts/run_summary.py \
+#   --model-config vllm/vllm-violetxi-stage1-qwen3-4b-grpo-24k \
+#   --output-path outputs/stage1-qwen3-4b-grpo-imoproofbench-summary-24k.jsonl \
+#   --overwrite \
+#   --n 16 \
+#   --summary-max-tokens 16384
 
-# 3b: Grade summarized IMOProofBench (24k)
-uv run python scripts/eval.py \
-  --model-config openai/gpt-5.4-nano \
-  --data-path outputs/stage1-qwen3-4b-grpo-imoproofbench-summary-24k.jsonl \
-  --output-path outputs/stage1-qwen3-4b-grpo-imoproofbench-summary-24k-graded.jsonl
+# # 3b: Grade summarized IMOProofBench (24k)
+# uv run python scripts/eval.py \
+#   --model-config openai/gpt-5-nano \
+#   --data-path outputs/stage1-qwen3-4b-grpo-imoproofbench-summary-24k.jsonl \
+#   --output-path outputs/stage1-qwen3-4b-grpo-imoproofbench-summary-24k-graded.jsonl
 
 # 3c: IMOProofBench stats (24k)
 uv run python scripts/stats.py outputs/stage1-qwen3-4b-grpo-imoproofbench-summary-24k-graded.jsonl
 
-# Step 4: Kill the vLLM server (Ctrl+C in pane 1, or:)
+# ============================================================
+# 128 samples, 16k response length
+# ============================================================
+
+# 4a: IMOProofBench (generate + summarize, n128)
+uv run python scripts/run_summary.py \
+  --model-config vllm/vllm-violetxi-stage1-qwen3-4b-grpo \
+  --output-path outputs/stage1-qwen3-4b-grpo-imoproofbench-n128-summary.jsonl \
+  --overwrite \
+  --n 128
+
+# 4b: Grade summarized IMOProofBench (n128)
+uv run python scripts/eval.py \
+  --model-config openai/gpt-5-nano \
+  --data-path outputs/stage1-qwen3-4b-grpo-imoproofbench-n128-summary.jsonl \
+  --output-path outputs/stage1-qwen3-4b-grpo-imoproofbench-n128-summary-graded.jsonl
+
+# 4c: IMOProofBench stats (n128)
+uv run python scripts/stats.py outputs/stage1-qwen3-4b-grpo-imoproofbench-n128-summary-graded.jsonl
+
+# ============================================================
+# 128 samples, 24k response length
+# ============================================================
+
+# 5a: IMOProofBench (generate + summarize, n128, 24k)
+uv run python scripts/run_summary.py \
+  --model-config vllm/vllm-violetxi-stage1-qwen3-4b-grpo-24k \
+  --output-path outputs/stage1-qwen3-4b-grpo-imoproofbench-n128-summary-24k.jsonl \
+  --overwrite \
+  --n 128 \
+  --summary-max-tokens 16384
+
+# 5b: Grade summarized IMOProofBench (n128, 24k)
+uv run python scripts/eval.py \
+  --model-config openai/gpt-5-nano \
+  --data-path outputs/stage1-qwen3-4b-grpo-imoproofbench-n128-summary-24k.jsonl \
+  --output-path outputs/stage1-qwen3-4b-grpo-imoproofbench-n128-summary-24k-graded.jsonl
+
+# 5c: IMOProofBench stats (n128, 24k)
+uv run python scripts/stats.py outputs/stage1-qwen3-4b-grpo-imoproofbench-n128-summary-24k-graded.jsonl
+
+# Step 6: Kill the vLLM server (Ctrl+C in pane 1, or:)
 # pkill -f "vllm.entrypoints.openai.api_server --model violetxi/exp_stage1_qwen3-4b_grpo"
