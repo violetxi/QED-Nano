@@ -1,0 +1,11 @@
+model: gpt-5.4-mini-2026-03-17
+api: openai
+max_tokens: 128000
+read_cost: 0.2
+write_cost: 1.25
+concurrent_requests: 64
+temperature: 0
+top_p: null
+use_openai_responses_api: true
+reasoning:
+  summary: "auto"
