@@ -672,8 +672,15 @@ def rl_finetuning_worker(
             if sync:
                 yield  # do not enforce no_sync mode
             else:
-                with get_accelerator().no_sync(model):
+                accel = get_accelerator()
+                # DeepSpeed ZeRO Stage 3 does not support no_sync due to
+                # gradient partitioning; skip the wrapper in that case.
+                ds_plugin = getattr(accel.state, "deepspeed_plugin", None)
+                if ds_plugin is not None and getattr(ds_plugin, "zero_stage", 0) == 3:
                     yield
+                else:
+                    with accel.no_sync(model):
+                        yield
 
         with toggle_sync(do_optimizer_step):
             # Choose RL step function based on seq_packing config
