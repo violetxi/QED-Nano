@@ -1,4 +1,4 @@
-model: "violetxi/exp_stage2_proof_qwen3-4b_self_distill"
+model: "violetxi/exp_stage2_proof_qwen3-4b_self_distill_cont"
 model_revision: "main"
 api: custom
 api_key_env: VLLM_API_KEY
@@ -8,5 +8,5 @@ temperature: 0.8
 read_cost: 0.0
 write_cost: 0.0
 concurrent_requests: 1024
-human_readable_id: violetxi/exp_stage2_proof_qwen3-4b_self_distill
+human_readable_id: violetxi/exp_stage2_proof_qwen3-4b_self_distill_cont
 date: "2026-03-25"

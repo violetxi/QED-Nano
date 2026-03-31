@@ -16,7 +16,7 @@ export CC=/cm/local/apps/gcc/13.1.0/bin/gcc
 
 # Step 1: Start vLLM server (runs in foreground — use a separate tmux pane)
 python -m vllm.entrypoints.openai.api_server \
-  --model violetxi/exp_stage2_proof_qwen3-4b_self_distill \
+  --model violetxi/exp_stage2_proof_qwen3-4b_self_distill_cont \
   --host 0.0.0.0 \
   --port 8000 \
   --dtype bfloat16 \

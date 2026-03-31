@@ -54,12 +54,12 @@ uv run python scripts/stats.py outputs/stage1-qwen3-4b-dense-process-imoproofben
 #   --overwrite \
 #   --n 16
 
-# 2e: Grade summarized ProofBench
-uv run python scripts/eval.py \
-  --model-config openai/gpt-5-nano \
-  --data-path outputs/stage1-qwen3-4b-dense-process-proofbench-summary.jsonl \
-  --output-path outputs/stage1-qwen3-4b-dense-process-proofbench-summary-graded.jsonl \
-  --proofbench
+# # 2e: Grade summarized ProofBench
+# uv run python scripts/eval.py \
+#   --model-config openai/gpt-5-nano \
+#   --data-path outputs/stage1-qwen3-4b-dense-process-proofbench-summary.jsonl \
+#   --output-path outputs/stage1-qwen3-4b-dense-process-proofbench-summary-graded.jsonl \
+#   --proofbench
 
 # 2f: ProofBench stats
 uv run python scripts/stats.py outputs/stage1-qwen3-4b-dense-process-proofbench-summary-graded.jsonl
