@@ -11,8 +11,8 @@ export NCCL_P2P_DISABLE=0
 export CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7
 export UV_PYTHON=3.13
 # Remove nvhpc compat path from LD_LIBRARY_PATH (ONLY ON MARLOWE for hosting vLLM server)
-export LD_LIBRARY_PATH=$(echo "$LD_LIBRARY_PATH" | tr ':' '\n' | grep -v 'cuda/12.5/compat' | tr '\n' ':' | sed 's/:$//')
-export CC=/cm/local/apps/gcc/13.1.0/bin/gcc
+# export LD_LIBRARY_PATH=$(echo "$LD_LIBRARY_PATH" | tr ':' '\n' | grep -v 'cuda/12.5/compat' | tr '\n' ':' | sed 's/:$//')
+# export CC=/cm/local/apps/gcc/13.1.0/bin/gcc
 
 # Step 1: Start vLLM server (runs in foreground — use a separate tmux pane)
 python -m vllm.entrypoints.openai.api_server \
@@ -30,29 +30,29 @@ python -m vllm.entrypoints.openai.api_server \
 
 # Step 2: In another pane, run these one by one (from eval/ directory)
 
-# 2a: IMOProofBench (generate + summarize)
-uv run python scripts/run_summary.py \
-  --model-config vllm/vllm-violetxi-stage1-qwen3-4b-self-distill \
-  --output-path outputs/stage1-qwen3-4b-self-distill-imoproofbench-summary.jsonl \
-  --overwrite \
-  --n 16
+# # 2a: IMOProofBench (generate + summarize)
+# uv run python scripts/run_summary.py \
+#   --model-config vllm/vllm-violetxi-stage1-qwen3-4b-self-distill \
+#   --output-path outputs/stage1-qwen3-4b-self-distill-imoproofbench-summary.jsonl \
+#   --overwrite \
+#   --n 16
 
-# 2b: Grade summarized IMOProofBench
-uv run python scripts/eval.py \
-  --model-config openai/gpt-5-nano \
-  --data-path outputs/stage1-qwen3-4b-self-distill-imoproofbench-summary.jsonl \
-  --output-path outputs/stage1-qwen3-4b-self-distill-imoproofbench-summary-graded.jsonl
+# # 2b: Grade summarized IMOProofBench
+# uv run python scripts/eval.py \
+#   --model-config openai/gpt-5-nano \
+#   --data-path outputs/stage1-qwen3-4b-self-distill-imoproofbench-summary.jsonl \
+#   --output-path outputs/stage1-qwen3-4b-self-distill-imoproofbench-summary-graded.jsonl
 
 # 2c: IMOProofBench stats
 uv run python scripts/stats.py outputs/stage1-qwen3-4b-self-distill-imoproofbench-summary-graded.jsonl
 
-# 2d: ProofBench (generate + summarize)
-uv run python scripts/run_summary.py \
-  --model-config vllm/vllm-violetxi-stage1-qwen3-4b-self-distill \
-  --data-path lm-provers/ProofBench \
-  --output-path outputs/stage1-qwen3-4b-self-distill-proofbench-summary.jsonl \
-  --overwrite \
-  --n 16
+# # 2d: ProofBench (generate + summarize)
+# uv run python scripts/run_summary.py \
+#   --model-config vllm/vllm-violetxi-stage1-qwen3-4b-self-distill \
+#   --data-path lm-provers/ProofBench \
+#   --output-path outputs/stage1-qwen3-4b-self-distill-proofbench-summary.jsonl \
+#   --overwrite \
+#   --n 16
 
 # 2e: Grade summarized ProofBench
 uv run python scripts/eval.py \

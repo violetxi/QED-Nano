@@ -31,7 +31,7 @@ def main():
     api = HfApi()
     namespace = args.namespace or whoami()["name"]
 
-    files = sorted(glob.glob(os.path.join(args.outputs_dir, "*-imoproofbench-*graded*.jsonl")))
+    files = sorted(glob.glob(os.path.join(args.outputs_dir, "*-*proofbench-*graded*.jsonl")))
     if not files:
         logger.warning(f"No *-graded*.jsonl files found in {args.outputs_dir}")
         return
