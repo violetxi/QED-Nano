@@ -30,18 +30,18 @@ python -m vllm.entrypoints.openai.api_server \
 
 # Step 2: In another pane, run these one by one (from eval/ directory)
 
-# # 2a: IMOProofBench (generate + summarize)
-# uv run python scripts/run_summary.py \
-#   --model-config vllm/vllm-violetxi-stage1-qwen3-4b-dense-outcome \
-#   --output-path outputs/stage1-qwen3-4b-dense-outcome-imoproofbench-summary.jsonl \
-#   --overwrite \
-#   --n 16
+# 2a: IMOProofBench (generate + summarize)
+uv run python scripts/run_summary.py \
+  --model-config vllm/vllm-violetxi-stage1-qwen3-4b-dense-outcome \
+  --output-path outputs/stage1-qwen3-4b-dense-outcome-imoproofbench-summary.jsonl \
+  --overwrite \
+  --n 16
 
-# # 2b: Grade summarized IMOProofBench
-# uv run python scripts/eval.py \
-#   --model-config openai/gpt-5-nano \
-#   --data-path outputs/stage1-qwen3-4b-dense-outcome-imoproofbench-summary.jsonl \
-#   --output-path outputs/stage1-qwen3-4b-dense-outcome-imoproofbench-summary-graded.jsonl
+# 2b: Grade summarized IMOProofBench
+uv run python scripts/eval.py \
+  --model-config openai/gpt-5-nano \
+  --data-path outputs/stage1-qwen3-4b-dense-outcome-imoproofbench-summary.jsonl \
+  --output-path outputs/stage1-qwen3-4b-dense-outcome-imoproofbench-summary-graded.jsonl
 
 # 2c: IMOProofBench stats
 uv run python scripts/stats.py outputs/stage1-qwen3-4b-dense-outcome-imoproofbench-summary-graded.jsonl
@@ -108,12 +108,12 @@ uv run python scripts/stats.py outputs/stage1-qwen3-4b-dense-outcome-proofbench-
 # 128 samples, 16k response length
 # ============================================================
 
-# # 4a: IMOProofBench (generate + summarize, n128)
-# uv run python scripts/run_summary.py \
-#   --model-config vllm/vllm-violetxi-stage1-qwen3-4b-dense-outcome \
-#   --output-path outputs/stage1-qwen3-4b-dense-outcome-imoproofbench-n128-summary.jsonl \
-#   --overwrite \
-#   --n 128
+# 4a: IMOProofBench (generate + summarize, n128)
+uv run python scripts/run_summary.py \
+  --model-config vllm/vllm-violetxi-stage1-qwen3-4b-dense-outcome \
+  --output-path outputs/stage1-qwen3-4b-dense-outcome-imoproofbench-n128-summary.jsonl \
+  --overwrite \
+  --n 128
 
 # 4b: Grade summarized IMOProofBench (n128)
 uv run python scripts/eval.py \

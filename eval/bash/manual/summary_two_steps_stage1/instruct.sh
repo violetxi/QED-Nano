@@ -30,18 +30,18 @@ python -m vllm.entrypoints.openai.api_server \
 
 # Step 2: In another pane, run these one by one (from eval/ directory)
 
-# # 2a: IMOProofBench (generate + summarize)
-# uv run python scripts/run_summary.py \
-#   --model-config vllm/vllm-qwen-qwen3-4b-instruct-4b-2507 \
-#   --output-path outputs/qwen3-4b-instruct-raw-imoproofbench-summary.jsonl \
-#   --overwrite \
-#   --n 16
+# 2a: IMOProofBench (generate + summarize)
+uv run python scripts/run_summary.py \
+  --model-config vllm/vllm-qwen-qwen3-4b-instruct-4b-2507 \
+  --output-path outputs/qwen3-4b-instruct-raw-imoproofbench-summary.jsonl \
+  --overwrite \
+  --n 16
 
-# # 2b: Grade summarized IMOProofBench
-# uv run python scripts/eval.py \
-#   --model-config openai/gpt-5-nano \
-#   --data-path outputs/qwen3-4b-instruct-raw-imoproofbench-summary.jsonl \
-#   --output-path outputs/qwen3-4b-instruct-raw-imoproofbench-summary-graded.jsonl
+# 2b: Grade summarized IMOProofBench
+uv run python scripts/eval.py \
+  --model-config openai/gpt-5-nano \
+  --data-path outputs/qwen3-4b-instruct-raw-imoproofbench-summary.jsonl \
+  --output-path outputs/qwen3-4b-instruct-raw-imoproofbench-summary-graded.jsonl
 
 # 2c: IMOProofBench stats
 uv run python scripts/stats.py outputs/qwen3-4b-instruct-raw-imoproofbench-summary-graded.jsonl
@@ -68,13 +68,13 @@ uv run python scripts/stats.py outputs/qwen3-4b-instruct-raw-proofbench-summary-
 # 24k response length
 # ============================================================
 
-# # 3a: IMOProofBench (generate + summarize, 24k)
-# uv run python scripts/run_summary.py \
-#   --model-config vllm/vllm-qwen-qwen3-4b-instruct-4b-2507-24k \
-#   --output-path outputs/qwen3-4b-instruct-raw-imoproofbench-summary-24k.jsonl \
-#   --overwrite \
-#   --n 16 \
-#   --summary-max-tokens 16384
+# 3a: IMOProofBench (generate + summarize, 24k)
+uv run python scripts/run_summary.py \
+  --model-config vllm/vllm-qwen-qwen3-4b-instruct-4b-2507-24k \
+  --output-path outputs/qwen3-4b-instruct-raw-imoproofbench-summary-24k.jsonl \
+  --overwrite \
+  --n 16 \
+  --summary-max-tokens 16384
 
 # 3b: Grade summarized IMOProofBench (24k)
 uv run python scripts/eval.py \
@@ -108,18 +108,18 @@ uv run python scripts/stats.py outputs/qwen3-4b-instruct-raw-proofbench-summary-
 # 128 samples, 16k response length
 # ============================================================
 
-# # 4a: IMOProofBench (generate + summarize, n128)
-# uv run python scripts/run_summary.py \
-#   --model-config vllm/vllm-qwen-qwen3-4b-instruct-4b-2507 \
-#   --output-path outputs/qwen3-4b-instruct-raw-imoproofbench-n128-summary.jsonl \
-#   --overwrite \
-#   --n 128
+# 4a: IMOProofBench (generate + summarize, n128)
+uv run python scripts/run_summary.py \
+  --model-config vllm/vllm-qwen-qwen3-4b-instruct-4b-2507 \
+  --output-path outputs/qwen3-4b-instruct-raw-imoproofbench-n128-summary.jsonl \
+  --overwrite \
+  --n 128
 
-# # 4b: Grade summarized IMOProofBench (n128)
-# uv run python scripts/eval.py \
-#   --model-config openai/gpt-5-nano \
-#   --data-path outputs/qwen3-4b-instruct-raw-imoproofbench-n128-summary.jsonl \
-#   --output-path outputs/qwen3-4b-instruct-raw-imoproofbench-n128-summary-graded.jsonl
+# 4b: Grade summarized IMOProofBench (n128)
+uv run python scripts/eval.py \
+  --model-config openai/gpt-5-nano \
+  --data-path outputs/qwen3-4b-instruct-raw-imoproofbench-n128-summary.jsonl \
+  --output-path outputs/qwen3-4b-instruct-raw-imoproofbench-n128-summary-graded.jsonl
 
 # 4c: IMOProofBench stats (n128)
 uv run python scripts/stats.py outputs/qwen3-4b-instruct-raw-imoproofbench-n128-summary-graded.jsonl
@@ -146,19 +146,19 @@ uv run python scripts/stats.py outputs/qwen3-4b-instruct-raw-proofbench-n128-sum
 # 128 samples, 24k response length
 # ============================================================
 
-# 5a: IMOProofBench (generate + summarize, n128, 24k)
-uv run python scripts/run_summary.py \
-  --model-config vllm/vllm-qwen-qwen3-4b-instruct-4b-2507-24k \
-  --output-path outputs/qwen3-4b-instruct-raw-imoproofbench-n128-summary-24k.jsonl \
-  --overwrite \
-  --n 128 \
-  --summary-max-tokens 16384
+# # 5a: IMOProofBench (generate + summarize, n128, 24k)
+# uv run python scripts/run_summary.py \
+#   --model-config vllm/vllm-qwen-qwen3-4b-instruct-4b-2507-24k \
+#   --output-path outputs/qwen3-4b-instruct-raw-imoproofbench-n128-summary-24k.jsonl \
+#   --overwrite \
+#   --n 128 \
+#   --summary-max-tokens 16384
 
-# 5b: Grade summarized IMOProofBench (n128, 24k)
-uv run python scripts/eval.py \
-  --model-config openai/gpt-5-nano \
-  --data-path outputs/qwen3-4b-instruct-raw-imoproofbench-n128-summary-24k.jsonl \
-  --output-path outputs/qwen3-4b-instruct-raw-imoproofbench-n128-summary-24k-graded.jsonl
+# # 5b: Grade summarized IMOProofBench (n128, 24k)
+# uv run python scripts/eval.py \
+#   --model-config openai/gpt-5-nano \
+#   --data-path outputs/qwen3-4b-instruct-raw-imoproofbench-n128-summary-24k.jsonl \
+#   --output-path outputs/qwen3-4b-instruct-raw-imoproofbench-n128-summary-24k-graded.jsonl
 
 # 5c: IMOProofBench stats (n128, 24k)
 uv run python scripts/stats.py outputs/qwen3-4b-instruct-raw-imoproofbench-n128-summary-24k-graded.jsonl

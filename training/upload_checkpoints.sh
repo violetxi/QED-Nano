@@ -4,6 +4,12 @@
 # --hf_repo_id violetxi/exp_stage2_proof_qwen3-4b_instruct \
 # --main_checkpoint current
 
+# # Dense Process (Done!)
+# python upload_checkpoints.py \
+# --checkpoint_dir results/dense_process/finetune/ \
+# --hf_repo_id violetxi/exp_stage2_proof_qwen3-4b_dense_process \
+# --main_checkpoint current
+
 # SFT (Uploaded at ckpt-327)
 python upload_checkpoints.py \
 --checkpoint_dir results/sft/finetune/ \
@@ -26,10 +32,4 @@ python upload_checkpoints.py \
 python upload_checkpoints.py \
 --checkpoint_dir results/dense_outcome/finetune/ \
 --hf_repo_id violetxi/exp_stage2_proof_qwen3-4b_dense_outcome \
---main_checkpoint current
-
-# Dense Process (Uploaded at ckpt-380)
-python upload_checkpoints.py \
---checkpoint_dir results/dense_process/finetune/ \
---hf_repo_id violetxi/exp_stage2_proof_qwen3-4b_dense_process \
 --main_checkpoint current

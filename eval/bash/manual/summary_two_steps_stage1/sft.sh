@@ -30,18 +30,18 @@ python -m vllm.entrypoints.openai.api_server \
 
 # Step 2: In another pane, run these one by one (from eval/ directory)
 
-# # 2a: IMOProofBench (generate + summarize)
-# uv run python scripts/run_summary.py \
-#   --model-config vllm/vllm-violetxi-stage1-qwen3-4b-sft \
-#   --output-path outputs/stage1-qwen3-4b-sft-imoproofbench-summary.jsonl \
-#   --overwrite \
-#   --n 16
+# 2a: IMOProofBench (generate + summarize)
+uv run python scripts/run_summary.py \
+  --model-config vllm/vllm-violetxi-stage1-qwen3-4b-sft \
+  --output-path outputs/stage1-qwen3-4b-sft-imoproofbench-summary.jsonl \
+  --overwrite \
+  --n 16
 
-# # 2b: Grade summarized IMOProofBench
-# uv run python scripts/eval.py \
-#   --model-config openai/gpt-5-nano \
-#   --data-path outputs/stage1-qwen3-4b-sft-imoproofbench-summary.jsonl \
-#   --output-path outputs/stage1-qwen3-4b-sft-imoproofbench-summary-graded.jsonl
+# 2b: Grade summarized IMOProofBench
+uv run python scripts/eval.py \
+  --model-config openai/gpt-5-nano \
+  --data-path outputs/stage1-qwen3-4b-sft-imoproofbench-summary.jsonl \
+  --output-path outputs/stage1-qwen3-4b-sft-imoproofbench-summary-graded.jsonl
 
 # 2c: IMOProofBench stats
 uv run python scripts/stats.py outputs/stage1-qwen3-4b-sft-imoproofbench-summary-graded.jsonl
@@ -68,13 +68,13 @@ uv run python scripts/stats.py outputs/stage1-qwen3-4b-sft-proofbench-summary-gr
 # 24k response length
 # ============================================================
 
-# # 3a: IMOProofBench (generate + summarize, 24k)
-# uv run python scripts/run_summary.py \
-#   --model-config vllm/vllm-violetxi-stage1-qwen3-4b-sft-24k \
-#   --output-path outputs/stage1-qwen3-4b-sft-imoproofbench-summary-24k.jsonl \
-#   --overwrite \
-#   --n 16 \
-#   --summary-max-tokens 16384
+# 3a: IMOProofBench (generate + summarize, 24k)
+uv run python scripts/run_summary.py \
+  --model-config vllm/vllm-violetxi-stage1-qwen3-4b-sft-24k \
+  --output-path outputs/stage1-qwen3-4b-sft-imoproofbench-summary-24k.jsonl \
+  --overwrite \
+  --n 16 \
+  --summary-max-tokens 16384
 
 # 3b: Grade summarized IMOProofBench (24k)
 uv run python scripts/eval.py \
