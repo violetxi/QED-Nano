@@ -108,12 +108,12 @@ uv run python scripts/stats.py outputs/stage1-qwen3-4b-self-distill-proofbench-s
 # 128 samples, 16k response length
 # ============================================================
 
-# 4a: IMOProofBench (generate + summarize, n128)
-uv run python scripts/run_summary.py \
-  --model-config vllm/vllm-violetxi-stage1-qwen3-4b-self-distill \
-  --output-path outputs/stage1-qwen3-4b-self-distill-imoproofbench-n128-summary.jsonl \
-  --overwrite \
-  --n 128
+# # 4a: IMOProofBench (generate + summarize, n128)
+# uv run python scripts/run_summary.py \
+#   --model-config vllm/vllm-violetxi-stage1-qwen3-4b-self-distill \
+#   --output-path outputs/stage1-qwen3-4b-self-distill-imoproofbench-n128-summary.jsonl \
+#   --overwrite \
+#   --n 128
 
 # 4b: Grade summarized IMOProofBench (n128)
 uv run python scripts/eval.py \

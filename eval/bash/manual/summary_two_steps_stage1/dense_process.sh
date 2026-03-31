@@ -146,19 +146,19 @@ uv run python scripts/stats.py outputs/stage1-qwen3-4b-dense-process-proofbench-
 # 128 samples, 24k response length
 # ============================================================
 
-# 5a: IMOProofBench (generate + summarize, n128, 24k)
-uv run python scripts/run_summary.py \
-  --model-config vllm/vllm-violetxi-stage1-qwen3-4b-dense-process-24k \
-  --output-path outputs/stage1-qwen3-4b-dense-process-imoproofbench-n128-summary-24k.jsonl \
-  --overwrite \
-  --n 128 \
-  --summary-max-tokens 16384
+# # 5a: IMOProofBench (generate + summarize, n128, 24k)
+# uv run python scripts/run_summary.py \
+#   --model-config vllm/vllm-violetxi-stage1-qwen3-4b-dense-process-24k \
+#   --output-path outputs/stage1-qwen3-4b-dense-process-imoproofbench-n128-summary-24k.jsonl \
+#   --overwrite \
+#   --n 128 \
+#   --summary-max-tokens 16384
 
-# 5b: Grade summarized IMOProofBench (n128, 24k)
-uv run python scripts/eval.py \
-  --model-config openai/gpt-5-nano \
-  --data-path outputs/stage1-qwen3-4b-dense-process-imoproofbench-n128-summary-24k.jsonl \
-  --output-path outputs/stage1-qwen3-4b-dense-process-imoproofbench-n128-summary-24k-graded.jsonl
+# # 5b: Grade summarized IMOProofBench (n128, 24k)
+# uv run python scripts/eval.py \
+#   --model-config openai/gpt-5-nano \
+#   --data-path outputs/stage1-qwen3-4b-dense-process-imoproofbench-n128-summary-24k.jsonl \
+#   --output-path outputs/stage1-qwen3-4b-dense-process-imoproofbench-n128-summary-24k-graded.jsonl
 
 # 5c: IMOProofBench stats (n128, 24k)
 uv run python scripts/stats.py outputs/stage1-qwen3-4b-dense-process-imoproofbench-n128-summary-24k-graded.jsonl

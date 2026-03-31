@@ -108,12 +108,12 @@ uv run python scripts/stats.py outputs/stage1-qwen3-4b-dense-outcome-proofbench-
 # 128 samples, 16k response length
 # ============================================================
 
-# 4a: IMOProofBench (generate + summarize, n128)
-uv run python scripts/run_summary.py \
-  --model-config vllm/vllm-violetxi-stage1-qwen3-4b-dense-outcome \
-  --output-path outputs/stage1-qwen3-4b-dense-outcome-imoproofbench-n128-summary.jsonl \
-  --overwrite \
-  --n 128
+# # 4a: IMOProofBench (generate + summarize, n128)
+# uv run python scripts/run_summary.py \
+#   --model-config vllm/vllm-violetxi-stage1-qwen3-4b-dense-outcome \
+#   --output-path outputs/stage1-qwen3-4b-dense-outcome-imoproofbench-n128-summary.jsonl \
+#   --overwrite \
+#   --n 128
 
 # 4b: Grade summarized IMOProofBench (n128)
 uv run python scripts/eval.py \
@@ -147,12 +147,12 @@ uv run python scripts/stats.py outputs/stage1-qwen3-4b-dense-outcome-proofbench-
 # ============================================================
 
 # 5a: IMOProofBench (generate + summarize, n128, 24k)
-uv run python scripts/run_summary.py \
-  --model-config vllm/vllm-violetxi-stage1-qwen3-4b-dense-outcome-24k \
-  --output-path outputs/stage1-qwen3-4b-dense-outcome-imoproofbench-n128-summary-24k.jsonl \
-  --overwrite \
-  --n 128 \
-  --summary-max-tokens 16384
+# uv run python scripts/run_summary.py \
+#   --model-config vllm/vllm-violetxi-stage1-qwen3-4b-dense-outcome-24k \
+#   --output-path outputs/stage1-qwen3-4b-dense-outcome-imoproofbench-n128-summary-24k.jsonl \
+#   --overwrite \
+#   --n 128 \
+#   --summary-max-tokens 16384
 
 # 5b: Grade summarized IMOProofBench (n128, 24k)
 uv run python scripts/eval.py \
