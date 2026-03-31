@@ -181,6 +181,7 @@ class APIClient:
 
     def _initialize_api_keys(self):
         """Initializes the API keys and base URLs for the selected API."""
+        is_custom = False
         if self.api == "xai":
             self.api_key = os.getenv("XAI_API_KEY")
             self.base_url = "https://api.x.ai/v1"
@@ -216,13 +217,16 @@ class APIClient:
             self.base_url = "https://openrouter.ai/api/v1"
             self.api = "openai"
         elif self.api == "custom":
+            is_custom = True
             self.api = "openai"
             self.base_url = self.base_url
             self.api_key = os.getenv(self.api_key_env) if self.api_key_env is not None else None
+            if self.api_key is None:
+                self.api_key = "EMPTY"  # dummy key for local servers (e.g. vLLM without auth)
         else:
             raise ValueError(f"API {self.api} not supported.")
 
-        assert self.api_key is not None or self.api == "custom", "API key not found."
+        assert self.api_key is not None or is_custom, "API key not found."
 
     class InternalRequestResult:
         """A class to hold the result of a request internally (below run_queries)."""
