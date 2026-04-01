@@ -46,6 +46,23 @@ uv run python scripts/eval.py \
 # 2c: IMOProofBench stats
 uv run python scripts/stats.py outputs/stage2-qwen3-4b-grpo-imoproofbench-summary-graded.jsonl
 
+# # 2d: ProofBench (generate + summarize)
+# uv run python scripts/run_summary.py \
+#   --model-config vllm/vllm-violetxi-stage2-qwen3-4b-grpo \
+#   --data-path lm-provers/ProofBench \
+#   --output-path outputs/stage2-qwen3-4b-grpo-proofbench-summary.jsonl \
+#   --overwrite \
+#   --n 16
+
+# # 2e: Grade summarized ProofBench
+# uv run python scripts/eval.py \
+#   --model-config openai/gpt-5-nano \
+#   --data-path outputs/stage2-qwen3-4b-grpo-proofbench-summary.jsonl \
+#   --output-path outputs/stage2-qwen3-4b-grpo-proofbench-summary-graded.jsonl \
+#   --proofbench
+
+# 2f: ProofBench stats
+uv run python scripts/stats.py outputs/stage2-qwen3-4b-grpo-proofbench-summary-graded.jsonl
 # ============================================================
 # 24k response length
 # ============================================================
