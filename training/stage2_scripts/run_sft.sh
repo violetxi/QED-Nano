@@ -11,7 +11,7 @@ export OPENAI_API_KEY="${OPENROUTER_API_KEY:?Set OPENROUTER_API_KEY before runni
 export OPENAI_BASE_URL="https://openrouter.ai/api/v1"
 
 python -m pipelinerl.launch \
-  --config-name=sft \
+  --config-name=sft_cont \
   wandb.wandb_project_name=prl-proof-qwen4b-instruct \
   output_dir=results/sft \
   world.actor_start_port=18080
