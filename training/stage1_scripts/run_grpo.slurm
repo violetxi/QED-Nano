@@ -1,13 +1,13 @@
 #!/bin/bash
-#SBATCH --job-name=grpo_stage1_proof
+#SBATCH --job-name=grpo_stage1_proof_10a2f
 #SBATCH --account=ingrai
 #SBATCH --partition=hai
 #SBATCH --nodes=2
 #SBATCH --ntasks-per-node=1
-#SBATCH --gres=gpu:h100:2
+#SBATCH --gres=gpu:h100:6
 #SBATCH --cpus-per-task=32
-#SBATCH --mem=128G
-#SBATCH --time=24:00:00
+#SBATCH --mem=512G
+#SBATCH --time=168:00:00
 #SBATCH --output=slurm_logs/%x_%j.out
 #SBATCH --error=slurm_logs/%x_%j.err
 #SBATCH --requeue
@@ -84,10 +84,11 @@ srun -w "$HOSTLIST" --ntasks-per-node=1 \
     python -m pipelinerl.launch \
       --config-name=grpo_stage1_proof \
       wandb.wandb_project_name=prl-proof-qwen4b-gemini-stage1 \
-      output_dir=results/grpo \
+      output_dir=results/grpo_10a2f \
       world.actor_start_port=18080 \
+      world.actor_fraction=10 \
+      world.finetune_fraction=2 \
       actor.llm_max_rollouts=16 \
       finetune.seq_length=24576 \
-      finetune.seq_parallel=2 \
-      llm_grader.wandb_table.log_every_n_groups=4
+      finetune.seq_parallel=2      
   '
