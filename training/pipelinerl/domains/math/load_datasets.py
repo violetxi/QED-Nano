@@ -19,11 +19,13 @@ and this will not parse:
 """
 
 
-QED_DATASETS = ["lm-provers/Olympiads-RL", "lm-provers/FineProofs-RL", "lm-provers/FineProofs-RL-test"]
+QED_DATASETS = ["lm-provers/Olympiads-RL", "lm-provers/FineProofs-RL"]
 
+STAGE_1_PROOF_DATASETS = ["violetxi/FineProofs-Stage-1"]
 PROOFBENCH_DATASETS = ["lm-provers/ProofBench"]
 
 logger = logging.getLogger(__name__)
+
 
 def process_proof_problem(dataset, dataset_name):
     for row in dataset:
@@ -33,7 +35,6 @@ def process_proof_problem(dataset, dataset_name):
             "answer": row["solution"] if "solution" in row else "",   # reference solution
             "schema": row["rubrics"],        # marking scheme
         }
-
 
 def process_proofbench_problem(dataset, dataset_name):
     for row in dataset:
@@ -241,7 +242,9 @@ def process_answer_bench(dataset, dataset_name):
 
 
 def load_datasets(
-    dataset_names: List[str | Dict[str, Any]] | Dict[str, Any] | str | None, seed: int | None = None
+    dataset_names: List[str | Dict[str, Any]] | Dict[str, Any] | str | None, 
+    seed: int | None = None,
+    proof_train_type: str = "vanilla",
 ) -> List[Tuple[str, Dict]]:
     if dataset_names is None:
         return []
@@ -272,6 +275,17 @@ def load_datasets(
             dataset = load_dataset(*load_args, split=split, trust_remote_code=trust_remote_code)
             if hub_id in QED_DATASETS:
                 samples = [s for s in process_proof_problem(dataset, hub_id.split("/")[-1]) if s is not None]
+            elif hub_id in STAGE_1_PROOF_DATASETS:
+                assert proof_train_type in ["vanilla", "opd", "exp_rl"], \
+                    "Invalid proof train type"
+                if proof_train_type == "vanilla":
+                    samples = [s for s in process_proof_problem(dataset, hub_id.split("/")[-1]) if s is not None]
+                elif proof_train_type == "opd":
+                    raise NotImplementedError("OPD proof train type not implemented")
+                    # samples = [s for s in process_proof_problem_opd(dataset, hub_id.split("/")[-1]) if s is not None]
+                elif proof_train_type == "exp_rl":
+                    raise NotImplementedError("ExpRL proof train type not implemented")
+                    # samples = [s for s in process_proof_problem_exp_rl(dataset, hub_id.split("/")[-1]) if s is not None]
             elif hub_id in PROOFBENCH_DATASETS:
                 samples = [s for s in process_proofbench_problem(dataset, hub_id.split("/")[-1]) if s is not None]
             else:

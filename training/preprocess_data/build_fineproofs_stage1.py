@@ -16,7 +16,7 @@ Output record schema:
     source         str
     category       str
     competition    str
-    proof          str          from A (reference solution)
+    solution          str          from A (reference solution)
     rubrics        str          from C (grading rubric)
     variants       list[str]    from B; each is prefix_steps + one filtered suffix
                                 detailed_steps, joined with "\\n\\n"
@@ -36,7 +36,7 @@ from datasets import Dataset, DatasetDict, load_dataset
 DATASET_A = "lm-provers/FineProofs-SFT"
 DATASET_B = "haoranli-ml/genvf-multi-policy-train-v1_final_bulle_list_final_filtered_threshold_0.6"
 DATASET_C = "lm-provers/FineProofs-RL"
-HUB_REPO = "violetxi/FineProofs-ABC"
+HUB_REPO = "violetxi/FineProofs-Stage-1"
 OUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fineproofs_abc")
 
 FUZZY_RATIO = 0.9
@@ -114,7 +114,7 @@ def main(push: bool = True, private: bool = True):
                 "source": a_row.get("source"),
                 "category": a_row.get("category"),
                 "competition": a_row.get("competition"),
-                "proof": a_row.get("proof"),
+                "solution": a_row.get("proof"),
                 "rubrics": c_row.get("rubrics") if c_row else None,
                 "variants": variants,
                 "num_variants": len(variants),

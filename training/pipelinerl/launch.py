@@ -593,16 +593,16 @@ def save_command(script_dir: Path, cmd):
 
 
 def clean_up(exp_dir, force_restart):
-    logger.info("Cleaning up streams directory")
-    if os.path.exists(f"{exp_dir}/streams"):
-        if os.path.isdir(f"{exp_dir}/streams") and not os.path.islink(f"{exp_dir}/streams"):
-            shutil.rmtree(f"{exp_dir}/streams")
-        else:
-            os.remove(f"{exp_dir}/streams")
-    if os.path.exists(f"{exp_dir}/dump.rdb"):
-        os.remove(f"{exp_dir}/dump.rdb")
-
     if force_restart:
+        logger.info("force_restart=True; wiping streams, redis dump, finetune, and logs")
+        if os.path.exists(f"{exp_dir}/streams"):
+            if os.path.isdir(f"{exp_dir}/streams") and not os.path.islink(f"{exp_dir}/streams"):
+                shutil.rmtree(f"{exp_dir}/streams")
+            else:
+                os.remove(f"{exp_dir}/streams")
+        if os.path.exists(f"{exp_dir}/dump.rdb"):
+            os.remove(f"{exp_dir}/dump.rdb")
+
         if os.path.exists(f"{exp_dir}/finetune"):
             logger.info("Cleaning up finetune directory")
             shutil.rmtree(f"{exp_dir}/finetune")
@@ -613,6 +613,20 @@ def clean_up(exp_dir, force_restart):
             logger.info(f"Erasing {log_file}")
             with open(log_file, "r"):
                 pass
+    else:
+        # Resume-friendly path. We still need to drop the streams directory
+        # because file-based streams do not tolerate old offsets mixing with
+        # new subprocess state, but we preserve finetune checkpoints and logs
+        # so pipelinerl's resume-from-`current` logic can pick up where it
+        # left off after a preemption/requeue.
+        logger.info("force_restart=False; resuming — preserving finetune/ and logs, resetting streams")
+        if os.path.exists(f"{exp_dir}/streams"):
+            if os.path.isdir(f"{exp_dir}/streams") and not os.path.islink(f"{exp_dir}/streams"):
+                shutil.rmtree(f"{exp_dir}/streams")
+            else:
+                os.remove(f"{exp_dir}/streams")
+        if os.path.exists(f"{exp_dir}/dump.rdb"):
+            os.remove(f"{exp_dir}/dump.rdb")
 
 
 def watch_processes_running(exp_path: Path, processes: List[subprocess.Popen], debug_mode: bool = False):
@@ -630,6 +644,25 @@ def watch_processes_running(exp_path: Path, processes: List[subprocess.Popen], d
             logger.info(f"Terminating {proc.args}")
             terminate_with_children(proc.pid)
 
+    # Slurm sends SIGTERM first (and then SIGKILL after GraceTime) on preemption
+    # or cancellation. Convert it into the same shutdown path as Ctrl-C so that
+    # child processes (finetune, actor, vLLM) get a clean termination and
+    # finetune has a chance to flush its last checkpoint to disk before we
+    # disappear. Without this, SIGTERM killed the orchestrator immediately and
+    # children would be orphaned / killed by slurm cleanup.
+    shutdown_requested: list[int] = []  # using a list so nested closure can mutate
+
+    def _handle_signal(signum, _frame):
+        if shutdown_requested:
+            # Second signal — user/slurm is insisting. Stop trying to be nice.
+            logger.warning(f"Received signal {signum} again; exiting hard")
+            sys.exit(128 + signum)
+        shutdown_requested.append(signum)
+        logger.info(f"Received signal {signum}; initiating graceful shutdown")
+
+    previous_sigterm = signal.signal(signal.SIGTERM, _handle_signal)
+    previous_sigint = signal.signal(signal.SIGINT, _handle_signal)
+
     logger.info("I have launched everyone, waiting for them to finish...")
 
     # last_trainer_version = -1
@@ -639,6 +672,9 @@ def watch_processes_running(exp_path: Path, processes: List[subprocess.Popen], d
         # Wait for all processes to complete
         # if just one dies, stop all
         while True:
+            if shutdown_requested:
+                gently_stop_all_processes()
+                sys.exit(128 + shutdown_requested[0])
             for proc in processes:
                 if (return_code := proc.poll()) is not None:
                     # print which process terminate and with what code
@@ -657,6 +693,11 @@ def watch_processes_running(exp_path: Path, processes: List[subprocess.Popen], d
             time.sleep(1.0)
     except KeyboardInterrupt:
         gently_stop_all_processes()
+    finally:
+        # Restore prior handlers so we don't leak global state if the caller
+        # invokes this function multiple times.
+        signal.signal(signal.SIGTERM, previous_sigterm)
+        signal.signal(signal.SIGINT, previous_sigint)
 
 
 def debug_link_streams(cfg: DictConfig, topics: list[str]):
@@ -926,9 +967,21 @@ def main(cfg: DictConfig):
 
     rank = int(os.environ.get("RANK", "0"))
 
+    # Resolve grader provider (explicit cfg wins, else inferred from the model name).
+    from pipelinerl.domains.math.verifier_api import resolve_provider as _resolve_grader_provider
+    grader_provider = _resolve_grader_provider(
+        getattr(cfg.llm_grader, "name", None),
+        getattr(cfg.llm_grader, "provider", None),
+    )
+    logger.info(f"Resolved LLM grader provider: {grader_provider}")            
+
     # Spin up LLM grader if specified
+    if grader_provider == "gemini":
+        if not os.environ.get("GEMINI_API_KEY"):
+            raise RuntimeError("Gemini grader requires GEMINI_API_KEY to be set in the environment")
+
     if "local" in cfg.llm_grader and not cfg.llm_grader.local:
-        logger.info(f"LLM grader is not local, skipping launch")
+        logger.info(f"LLM grader {cfg.llm_grader} is not local, skipping launch")
     else:
         if rank == 0:
             start_llm_grader(

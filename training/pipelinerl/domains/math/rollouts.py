@@ -93,6 +93,11 @@ async def generate_math_rollout(
     actor_cfg = cfg.rc_actor if rc_actor else cfg.actor
     if actor_cfg.system_prompt is not None:
         messages.append({"role": "system", "content": actor_cfg.system_prompt})
+    if "task" not in problem:
+        logger.error(
+            "Rollout received a problem dict without 'task' key; keys present: %s",
+            sorted(problem.keys()),
+        )
     messages.append({"role": "user", "content": actor_cfg.task_template.format(task=problem["task"])})
     prompt = Prompt(messages=messages)
     # logger.info(f"Reasoning prompt: {prompt}")
@@ -142,6 +147,7 @@ async def generate_math_rollout(
             prompt_name=getattr(cfg.llm_grader, "prompt_name", None),
             model=getattr(cfg.llm_grader, "name", None) if "/" in getattr(cfg.llm_grader, "name", "") else os.getenv("HF_ENDPOINT_REPO"),
             sampling_kwargs=getattr(cfg.llm_grader, "sampling_kwargs", None),
+            provider=getattr(cfg.llm_grader, "provider", None),
             log_wandb_metrics=cfg.wandb.use_wandb,
             collect_table_entry=bool(cfg.wandb.use_wandb and wandb_table_enabled),
         )

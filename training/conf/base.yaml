@@ -65,6 +65,10 @@ test_llm:
 
 llm_grader:
   name: null
+  # Provider for the grader endpoint. Options: "auto" (default, inferred from name),
+  # "openai" (OpenAI-compatible Responses API via OPENAI_API_KEY/BASE_URL),
+  # "gemini" (google-genai SDK via GEMINI_API_KEY).
+  provider: auto
   vllm_kwargs:
     num_nodes: 1
     tensor-parallel-size: 1

@@ -295,13 +295,43 @@ def parse_schema(schema: Any) -> str:
 
     return "\n\n".join(sections)
 
-_openai_client = None
+_grader_clients: dict[str, Any] = {}
 
 @dataclass
 class ProofVerificationResult:
     score: int
     metrics: dict[str, float | int] = field(default_factory=dict)
     table_entry: dict[str, str | int] | None = None
+
+
+@dataclass
+class GraderResponse:
+    output_text: str
+    reasoning_text: str
+    input_tokens: int | None = None
+    output_tokens: int | None = None
+
+
+def resolve_provider(model: str | None, explicit: str | None = None) -> str:
+    """
+    Pick grader provider. Explicit value wins; otherwise infer from model name.
+
+    - `google/...` prefix or anything containing `gemini` -> `gemini`
+    - everything else -> `openai` (OpenAI-compatible HTTP API, incl. OpenRouter)
+    """
+    if explicit and explicit != "auto":
+        return explicit
+    if not model:
+        return "openai"
+    name = model.lower()
+    if name.startswith("google/") or "gemini" in name:
+        return "gemini"
+    return "openai"
+
+
+def _strip_google_prefix(model: str) -> str:
+    """Drop a leading `google/` on Gemini model IDs for the genai SDK."""
+    return model.split("/", 1)[1] if model.lower().startswith("google/") else model
 
 
 def _extract_reasoning_from_response(response: Any) -> str:
@@ -322,6 +352,100 @@ def _extract_reasoning_from_response(response: Any) -> str:
                 if text:
                     reasoning_chunks.append(text)
     return "\n\n".join(reasoning_chunks)
+
+
+def _normalize_openai_response(response: Any) -> GraderResponse:
+    output_text = getattr(response, "output_text", None) or ""
+    reasoning_text = _extract_reasoning_from_response(response)
+    usage = getattr(response, "usage", None)
+    input_tokens = None
+    output_tokens = None
+    if usage is not None:
+        input_tokens = getattr(usage, "input_tokens", None)
+        output_tokens = getattr(usage, "output_tokens", None)
+        if input_tokens is None and isinstance(usage, dict):
+            input_tokens = usage.get("input_tokens")
+        if output_tokens is None and isinstance(usage, dict):
+            output_tokens = usage.get("output_tokens")
+    return GraderResponse(
+        output_text=output_text,
+        reasoning_text=reasoning_text,
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+    )
+
+
+def _build_gemini_config(api_kwargs: dict[str, Any] | None):
+    """Translate our sampling_kwargs dict into a google.genai GenerateContentConfig."""
+    from google.genai import types
+
+    remaining = dict(api_kwargs or {})
+    thinking_kwargs: dict[str, Any] = {"include_thoughts": True}
+    if "thinking_level" in remaining:
+        thinking_kwargs["thinking_level"] = remaining.pop("thinking_level")
+    if "thinking_budget" in remaining:
+        thinking_kwargs["thinking_budget"] = remaining.pop("thinking_budget")
+    if "include_thoughts" in remaining:
+        thinking_kwargs["include_thoughts"] = bool(remaining.pop("include_thoughts"))
+
+    config_kwargs: dict[str, Any] = {
+        "thinking_config": types.ThinkingConfig(**thinking_kwargs),
+    }
+    passthrough = {
+        "temperature",
+        "top_p",
+        "top_k",
+        "max_output_tokens",
+        "stop_sequences",
+        "candidate_count",
+        "response_mime_type",
+    }
+    for key in list(remaining.keys()):
+        if key in passthrough:
+            config_kwargs[key] = remaining.pop(key)
+
+    if remaining:
+        logger.warning("Ignoring unsupported Gemini sampling_kwargs: %s", sorted(remaining.keys()))
+
+    return types.GenerateContentConfig(**config_kwargs)
+
+
+def _normalize_gemini_response(response: Any) -> GraderResponse:
+    reasoning_chunks: list[str] = []
+    output_chunks: list[str] = []
+    candidates = getattr(response, "candidates", None) or []
+    if candidates:
+        content = getattr(candidates[0], "content", None)
+        parts = getattr(content, "parts", None) or []
+        for part in parts:
+            text = getattr(part, "text", None)
+            if not text:
+                continue
+            if getattr(part, "thought", False):
+                reasoning_chunks.append(text)
+            else:
+                output_chunks.append(text)
+    output_text = "\n".join(output_chunks).strip()
+    if not output_text:
+        # Fallback: SDK exposes `.text` that concatenates non-thought parts.
+        output_text = (getattr(response, "text", None) or "").strip()
+    reasoning_text = "\n\n".join(reasoning_chunks).strip()
+
+    usage = getattr(response, "usage_metadata", None)
+    input_tokens = None
+    output_tokens = None
+    if usage is not None:
+        input_tokens = getattr(usage, "prompt_token_count", None)
+        candidates_tokens = getattr(usage, "candidates_token_count", None)
+        thought_tokens = getattr(usage, "thoughts_token_count", None)
+        if candidates_tokens is not None or thought_tokens is not None:
+            output_tokens = (candidates_tokens or 0) + (thought_tokens or 0)
+    return GraderResponse(
+        output_text=output_text,
+        reasoning_text=reasoning_text,
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+    )
 
 
 def _should_collect_metrics(collect_flag: bool | None) -> bool:
@@ -368,25 +492,62 @@ def _build_rollout_metrics(success: bool, failure_causes: list[str], num_retries
     return metrics
 
 
-def get_openai_client():
+def get_grader_client(provider: str):
     """
-    Lazily initialize and cache a OpenAI API client using OpenAI SDK interface.
-    Requires OPENAI_API_KEY to be set in environment.
+    Lazily initialize and cache a grader client for the given provider.
+
+    - `openai` -> OpenAI-compatible client using OPENAI_API_KEY / OPENAI_BASE_URL.
+    - `gemini` -> google-genai client using GEMINI_API_KEY.
     """
-    global _openai_client
-    if _openai_client is None:
+    if provider in _grader_clients:
+        return _grader_clients[provider]
+
+    if provider == "openai":
         api_key = os.getenv("OPENAI_API_KEY")
         base_url = os.getenv("OPENAI_BASE_URL")
         if not api_key or not base_url:
             raise RuntimeError("Missing OPENAI_API_KEY or OPENAI_BASE_URL environment variable")
-        _openai_client = openai.OpenAI(
-            api_key=api_key,
-            base_url=base_url,
-        )
-    return _openai_client 
+        client = openai.OpenAI(api_key=api_key, base_url=base_url)
+    elif provider == "gemini":
+        api_key = os.getenv("GEMINI_API_KEY")
+        if not api_key:
+            raise RuntimeError("Missing GEMINI_API_KEY environment variable for Gemini grader")
+        from google import genai  # local import to keep this optional
+        client = genai.Client(api_key=api_key)
+    else:
+        raise RuntimeError(f"Unknown grader provider: {provider}")
+
+    _grader_clients[provider] = client
+    return client
+
+
+def get_openai_client():
+    """Back-compat shim; prefer get_grader_client('openai')."""
+    return get_grader_client("openai")
+
+def _classify_gemini_exception(exc: Exception) -> str:
+    """Map a google-genai exception to our failure-cause buckets."""
+    try:
+        from google.genai import errors as genai_errors  # type: ignore
+    except Exception:
+        genai_errors = None  # type: ignore
+
+    if genai_errors is not None and isinstance(exc, getattr(genai_errors, "APIError", tuple())):
+        status = getattr(exc, "code", None) or getattr(exc, "status_code", None)
+        if status in (429,):
+            return "rate_limit"
+        if status in (408, 504):
+            return "timeout"
+    msg = str(exc).lower()
+    if "rate limit" in msg or "quota" in msg or " 429" in msg or "resource_exhausted" in msg:
+        return "rate_limit"
+    if "timeout" in msg or "timed out" in msg or "deadline" in msg:
+        return "timeout"
+    return "other"
+
 
 # =================================================
-# Proof evaluator: calls OpenAI-compatible endpoint
+# Proof evaluator: dispatches to OpenAI-compatible or Gemini grader
 # =================================================
 async def verify_proof(
     problem: str,
@@ -402,16 +563,17 @@ async def verify_proof(
     retry_backoff: list[int] = [15, 30, 60, 90, 120],
     log_wandb_metrics: bool | None = None,
     collect_table_entry: bool | None = None,
+    provider: str | None = None,
 ) -> ProofVerificationResult:
     """
-    Evaluate a model-generated proof via Groq GPR model.
-    Returns a ProofVerificationResult that includes the integer score [0–7] and optional runtime metrics.
+    Evaluate a model-generated proof via an LLM grader.
 
-    Args:
-        schema: Markdown-formatted marking scheme expected by the grader prompt.
-        prompt_name: Optional filename or path for the evaluator prompt template. If omitted,
-            the default baseline prompt is used.
-    Retries up to `max_retries` times if the OpenAI-compatible endpoint fails or hits rate limits.
+    Providers supported:
+      * `openai` (default): OpenAI-compatible Responses API.
+      * `gemini`: google-genai SDK with GEMINI_API_KEY.
+
+    `provider` can be passed explicitly; otherwise it is inferred from the model
+    name (see `resolve_provider`).
     """
 
     collect_metrics = _should_collect_metrics(log_wandb_metrics)
@@ -424,7 +586,11 @@ async def verify_proof(
             metrics=_merge_metrics({}, rollout_metrics),
         )
 
-    client = client or get_openai_client()
+    if not model:
+        raise RuntimeError("verify_proof requires a grader model name; pass via cfg.llm_grader.name")
+
+    resolved_provider = resolve_provider(model, provider)
+    client = client or get_grader_client(resolved_provider)
     if not isinstance(schema, str):
         raise TypeError("verify_proof expects schema as Markdown string; convert via parse_schema() first.")
 
@@ -435,13 +601,10 @@ async def verify_proof(
         marking_scheme=schema,
         solution=generation,
     )
-    if not model:
-        raise RuntimeError("verify_proof requires a grader model name; pass via cfg.llm_grader.name")
     api_kwargs = dict(sampling_kwargs) if sampling_kwargs else {}
 
     loop = asyncio.get_event_loop()
 
-    # TODO: add support for chat completions API for other graders
     async def _call_openai():
         return await loop.run_in_executor(
             None,
@@ -452,6 +615,28 @@ async def verify_proof(
             ),
         )
 
+    async def _call_gemini():
+        gemini_model = _strip_google_prefix(model)
+        gemini_config = _build_gemini_config(api_kwargs)
+        return await loop.run_in_executor(
+            None,
+            lambda: client.models.generate_content(
+                model=gemini_model,
+                contents=prompt_text,
+                config=gemini_config,
+            ),
+        )
+
+    async def _call_grader():
+        if resolved_provider == "gemini":
+            return await _call_gemini()
+        return await _call_openai()
+
+    def _normalize(raw) -> GraderResponse:
+        if resolved_provider == "gemini":
+            return _normalize_gemini_response(raw)
+        return _normalize_openai_response(raw)
+
     attempt_failure_causes: list[str] = []
     num_retries = 0
     runtime_metrics: dict[str, float | int] = {}
@@ -459,34 +644,24 @@ async def verify_proof(
     for attempt in range(1, max_retries + 1):
         attempt_start = time.perf_counter()
         try:
-            response = await asyncio.wait_for(_call_openai(), timeout=timeout_seconds)
+            response = await asyncio.wait_for(_call_grader(), timeout=timeout_seconds)
             latency_seconds = time.perf_counter() - attempt_start
-            usage = getattr(response, "usage", None)
-            output_tokens = None
-            input_tokens = None
-            if usage is not None:
-                output_tokens = getattr(usage, "output_tokens", None)
-                input_tokens = getattr(usage, "input_tokens", None)
-                if output_tokens is None and isinstance(usage, dict):
-                    output_tokens = usage.get("output_tokens")
-                if input_tokens is None and isinstance(usage, dict):
-                    input_tokens = usage.get("input_tokens")
+            normalized = _normalize(response)
             if collect_metrics:
                 runtime_metrics = {"verifier/runtime/latency_per_request": latency_seconds}
-                if output_tokens is not None:
-                    runtime_metrics["verifier/runtime/output_tokens"] = output_tokens
-                if input_tokens is not None:
-                    runtime_metrics["verifier/runtime/input_tokens"] = input_tokens
-            output_text = getattr(response, "output_text", None) or ""
+                if normalized.output_tokens is not None:
+                    runtime_metrics["verifier/runtime/output_tokens"] = normalized.output_tokens
+                if normalized.input_tokens is not None:
+                    runtime_metrics["verifier/runtime/input_tokens"] = normalized.input_tokens
+            output_text = normalized.output_text
             match = re.search(r"<score>(\d+)</score>", output_text)
             if match:
                 score = int(match.group(1))
                 table_entry = None
                 if should_collect_table_entry:
-                    reasoning_text = _extract_reasoning_from_response(response)
                     table_entry = {
                         "prompt": prompt_text,
-                        "reasoning": reasoning_text,
+                        "reasoning": normalized.reasoning_text,
                         "output_text": output_text,
                         "score": score,
                     }
@@ -503,10 +678,9 @@ async def verify_proof(
             else:
                 table_entry = None
                 if should_collect_table_entry:
-                    reasoning_text = _extract_reasoning_from_response(response)
                     table_entry = {
                         "prompt": prompt_text,
-                        "reasoning": reasoning_text,
+                        "reasoning": normalized.reasoning_text,
                         "output_text": output_text,
                         "score": 0,
                     }
@@ -543,10 +717,11 @@ async def verify_proof(
 
         except Exception as e:
             wait_time = retry_backoff[min(attempt - 1, len(retry_backoff) - 1)]
-            attempt_failure_causes.append("other")
+            cause = _classify_gemini_exception(e) if resolved_provider == "gemini" else "other"
+            attempt_failure_causes.append(cause)
             if attempt < max_retries:
                 num_retries += 1
-            print(f"[verify_proof]: {_timestamp()} - Error on attempt {attempt}/{max_retries}: {e}, retrying in {wait_time}s...")
+            print(f"[verify_proof]: {_timestamp()} - Error on attempt {attempt}/{max_retries} ({cause}): {e}, retrying in {wait_time}s...")
             await asyncio.sleep(wait_time)
 
     print(f"[verify_proof]: {_timestamp()} - All {max_retries} attempts failed — returning score=0")
@@ -567,6 +742,7 @@ class MathProofEnvironment:
         sampling_kwargs: dict[str, Any] | None = None,
         use_wandb: bool | None = True,
         prompt_name: str | os.PathLike | None = None,
+        provider: str | None = None,
     ):
         self.model_name = model_name
         self.sampling_kwargs = sampling_kwargs
@@ -574,6 +750,7 @@ class MathProofEnvironment:
         if not prompt_name:
             raise ValueError("MathProofEnvironment requires llm_grader.prompt_name to be set")
         self.prompt_name = prompt_name
+        self.provider = resolve_provider(model_name, provider)
 
     def launch(self, port: int):
         """
@@ -599,7 +776,7 @@ class MathProofEnvironment:
             schema = parse_schema(request["schema"])
             generation = request["generation"]
 
-            client = get_openai_client()
+            client = get_grader_client(self.provider)
             verification = await verify_proof(
                 problem=problem,
                 ref_solution=ref_solution,
@@ -611,6 +788,7 @@ class MathProofEnvironment:
                 sampling_kwargs=self.sampling_kwargs,
                 log_wandb_metrics=self.use_wandb,
                 collect_table_entry=False,
+                provider=self.provider,
             )
             return JSONResponse(content={"score": verification.score})
 
@@ -622,7 +800,7 @@ class MathProofEnvironment:
 
 def main():
     parser = argparse.ArgumentParser(description="Run proof verifier locally for debugging.")
-    parser.add_argument("--model", required=True, help="Fully qualified grader model name (e.g. openai/gpt-oss-20b)")
+    parser.add_argument("--model", required=True, help="Fully qualified grader model name (e.g. openai/gpt-oss-20b or google/gemini-3.1-flash-lite-preview)")
     parser.add_argument(
         "--sampling-kwargs",
         default=None,
@@ -633,16 +811,32 @@ def main():
         default="v0",
         help="Name of evaluator prompt file located in prompts/evaluator_prompts (with or without .md suffix).",
     )
+    parser.add_argument(
+        "--provider",
+        default=None,
+        choices=[None, "auto", "openai", "gemini"],
+        help="Grader provider. Default: infer from model name.",
+    )
+    parser.add_argument("--iterations", type=int, default=10, help="Number of grader calls to run.")
     args = parser.parse_args()
     sampling_kwargs = json.loads(args.sampling_kwargs) if args.sampling_kwargs else None
 
-    dataset = load_dataset("hf-imo-colab/olympiads-proof-schema", split="train")
+    provider = resolve_provider(args.model, args.provider)
+    print(f"[verify_proof-cli] Using provider={provider} model={args.model}")
+
+    # Matches training-time grader inputs: problem + rubric, no reference solution.
+    dataset = load_dataset("lm-provers/FineProofs-RL", split="train")
     data = dataset[1]
     problem = data["problem"]
-    ref_solution = data["solution"]
-    schema = parse_schema(data["schema_0"])
-    prediction = data["solution"]
-    for i in range(10):
+    ref_solution = ""  # training pipeline feeds empty when dataset lacks `solution`
+    schema = parse_schema(data.get("rubrics") or data.get("schema") or data.get("schema_0"))
+    prediction = (
+        "We consider the triangle described in the problem. "
+        "After setting up coordinates and carrying out the relevant computation, "
+        "the required quantity follows from the Pythagorean identity. "
+        "Therefore the answer is \\boxed{0}."
+    )
+    for i in range(args.iterations):
         verification = asyncio.run(
             verify_proof(
                 problem,
@@ -652,9 +846,23 @@ def main():
                 prompt_name=args.prompt_name,
                 model=args.model,
                 sampling_kwargs=sampling_kwargs,
+                provider=provider,
+                collect_table_entry=True,
+                log_wandb_metrics=True,
             )
         )
-        print(f"Score: {verification.score}")
+        reasoning_preview = (verification.table_entry or {}).get("reasoning", "") or ""
+        output_preview = (verification.table_entry or {}).get("output_text", "") or ""
+        print(
+            f"[{i}] score={verification.score} "
+            f"latency={verification.metrics.get('verifier/runtime/latency_per_request', 0):.2f}s "
+            f"in_tok={verification.metrics.get('verifier/runtime/input_tokens', '-')} "
+            f"out_tok={verification.metrics.get('verifier/runtime/output_tokens', '-')}"
+        )
+        if reasoning_preview:
+            print(f"    reasoning[:200]: {reasoning_preview[:200]!r}")
+        if output_preview:
+            print(f"    output[:200]: {output_preview[:200]!r}")
 
 if __name__ == "__main__":
     main()

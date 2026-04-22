@@ -120,7 +120,12 @@ class WorldMap:
         # Legacy: keep gpus_per_llm for backward compatibility (use actor LLM value)
         self.gpus_per_llm = self.gpus_per_actor_llm
         
-        self.node_size = 8 if self.world_size > 1 else torch.cuda.device_count()
+        # Use actual GPU count visible to this process. Falls back to 8 if
+        # torch can't see any GPUs (e.g. during config validation on a CPU
+        # login node). The multi-node branch used to hardcode 8, which breaks
+        # any allocation with fewer GPUs per node.
+        detected_gpus = torch.cuda.device_count()
+        self.node_size = detected_gpus if detected_gpus > 0 else 8
         
         self._log_info(
             f"GPUs per LLM: RC Actor={self.gpus_per_rc_actor_llm}, "
