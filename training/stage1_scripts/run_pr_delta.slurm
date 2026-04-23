@@ -1,13 +1,13 @@
 #!/bin/bash
-#SBATCH --job-name=pr_delta_1a1f_clip
+#SBATCH --job-name=pr_delta_6a2f
 #SBATCH --account=ingrai
 #SBATCH --partition=hai
-#SBATCH --nodes=2
+#SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
-#SBATCH --gres=gpu:1
+#SBATCH --gres=gpu:h100:8
 #SBATCH --cpus-per-task=32
 #SBATCH --mem=256G
-#SBATCH --time=03:00:00
+#SBATCH --time=72:00:00
 #SBATCH --output=slurm_logs/%x_%j.out
 #SBATCH --error=slurm_logs/%x_%j.err
 
@@ -78,30 +78,13 @@ srun -w "$HOSTLIST" --ntasks-per-node=1 \
     cd '"$JOB_WORKING_DIR"'
     python -m pipelinerl.launch \
       --config-name=exp_rl_pr_stage1 \
-      wandb.use_wandb=true \
-      llm.wandb_table.enabled=false \
-      llm_grader.wandb_table.enabled=false \
-      force_restart=true \
-      output_dir=results/pr_delta_1a1f_step5_eval_clip \
+      wandb.wandb_project_name=prl-proof-qwen4b-gemini-stage1 \
+      output_dir=results/pr_delta_6a2f \
       world.actor_start_port=18120 \
-      world.actor_fraction=1 \
-      world.finetune_fraction=1 \
-      world.preprocessor_fraction=0 \
-      eval_every_n_versions=1 \
-      skip_first_eval=true \
-      finetune.seq_parallel=1 \
-      finetune.train_batch_size=2 \
-      finetune.gradient_accumulation_passes=1 \
-      finetune.max_train_steps=5 \
-      finetune.interrupt_train_steps=5 \
-      finetune.save_checkpoint_steps=1000 \
-      finetune.attempts=4 \
-      finetune.seq_length=8192 \
-      actor.llm_max_rollouts=128 \
-      llm.parameters.max_tokens=4096 \
-      test_llm.parameters.max_tokens=1024 \
-      process_grader.is_clip_length=true \
-      process_grader.max_concurrency=8 \
-      process_grader.sampling_kwargs.max_output_tokens=4096 \
-      process_grader.sampling_kwargs.thinking_level=medium
+      world.actor_fraction=6 \
+      world.finetune_fraction=2 \
+      finetune.seq_length=24576 \
+      finetune.seq_parallel=2 \
+      finetune.save_checkpoint_steps=20 \
+      process_grader.is_clip_length=true
   '
