@@ -36,7 +36,7 @@ finetune:
     entropy_bonus: 0.0001
     final_entropy_bonus: ${finetune.rl.entropy_bonus}
     overlong_filtering: false
-  save_checkpoint_steps: 1
+  save_checkpoint_steps: 20
   push_to_hub: false
   hub_model_id: null
   hub_model_revision: main
