@@ -22,6 +22,7 @@ assign_chunk_values_to_output_tokens = process_reward_utils.assign_chunk_values_
 compute_chunk_rewards = process_reward_utils.compute_chunk_rewards
 compute_chunk_advantages = process_reward_utils.compute_chunk_advantages
 expand_output_token_values_to_labels = process_reward_utils.expand_output_token_values_to_labels
+maybe_clip_chunk_advantages_for_length = process_reward_utils.maybe_clip_chunk_advantages_for_length
 split_reward_chunks = process_reward_utils.split_reward_chunks
 
 
@@ -131,6 +132,36 @@ class AssignChunkValuesToLabelsTest(unittest.TestCase):
 
         self.assertEqual(values, [3.0, 3.0, 3.0, 7.0, 7.0, 7.0, 5.0])
 
+    def test_length_clipping_zeroes_advantages_but_not_rewards_on_token_spans(self) -> None:
+        input_ids = [1, 2, 3, 4, 5, 3, 6]
+        reward_chunks = split_reward_chunks(input_ids, decode_token)
+        chunk_token_spans = [chunk.token_span for chunk in reward_chunks]
+        prefix_scores = [5.0, 5.0, 1.0]
+        chunk_rewards = compute_chunk_rewards(prefix_scores)
+        raw_chunk_advantages = compute_chunk_advantages(prefix_scores)
+        clipped_chunk_advantages, _, _ = maybe_clip_chunk_advantages_for_length(
+            output_token_ids=input_ids,
+            eos_token_id=99,
+            chunk_advantages=raw_chunk_advantages,
+            is_clip_length=True,
+        )
+
+        token_rewards = assign_chunk_values_to_output_tokens(
+            num_output_tokens=len(input_ids),
+            chunk_token_spans=chunk_token_spans,
+            chunk_values=chunk_rewards,
+            normalize_by_token_count=True,
+        )
+        token_advantages = assign_chunk_values_to_output_tokens(
+            num_output_tokens=len(input_ids),
+            chunk_token_spans=chunk_token_spans,
+            chunk_values=clipped_chunk_advantages,
+            normalize_by_token_count=True,
+        )
+
+        self.assertAlmostEqual(sum(token_rewards), sum(chunk_rewards))
+        self.assertEqual(token_advantages, [0.0] * len(input_ids))
+
     def test_delimiter_completion_inside_token_assigns_whole_token_to_previous_chunk(self) -> None:
         input_ids = [12, 13, 14, 15]
         chunks = split_reward_chunks(input_ids, decode_token)
@@ -157,6 +188,52 @@ class ChunkAdvantageTest(unittest.TestCase):
 
     def test_negative_and_positive_scores(self) -> None:
         self.assertEqual(compute_chunk_advantages([-1.0, 2.0, 1.0]), [-1.0, 4.0, 0.0])
+
+    def test_length_clipping_keeps_rewards_but_zeros_advantages_on_overflow(self) -> None:
+        prefix_scores = [5.0, 5.0, 1.0]
+        chunk_rewards = compute_chunk_rewards(prefix_scores)
+        raw_chunk_advantages = compute_chunk_advantages(prefix_scores)
+
+        clipped_advantages, is_overflow, is_length_clipped = maybe_clip_chunk_advantages_for_length(
+            output_token_ids=[11, 12, 13],
+            eos_token_id=99,
+            chunk_advantages=raw_chunk_advantages,
+            is_clip_length=True,
+        )
+
+        self.assertEqual(chunk_rewards, [5.0, 0.0, -4.0])
+        self.assertEqual(raw_chunk_advantages, [5.0, 1.0, -3.0])
+        self.assertEqual(clipped_advantages, [0.0, 0.0, 0.0])
+        self.assertTrue(is_overflow)
+        self.assertTrue(is_length_clipped)
+
+    def test_length_clipping_disabled_preserves_advantages(self) -> None:
+        raw_chunk_advantages = compute_chunk_advantages([5.0, 5.0, 1.0])
+
+        clipped_advantages, is_overflow, is_length_clipped = maybe_clip_chunk_advantages_for_length(
+            output_token_ids=[11, 12, 13],
+            eos_token_id=99,
+            chunk_advantages=raw_chunk_advantages,
+            is_clip_length=False,
+        )
+
+        self.assertEqual(clipped_advantages, raw_chunk_advantages)
+        self.assertTrue(is_overflow)
+        self.assertFalse(is_length_clipped)
+
+    def test_eos_present_preserves_advantages(self) -> None:
+        raw_chunk_advantages = compute_chunk_advantages([5.0, 5.0, 1.0])
+
+        clipped_advantages, is_overflow, is_length_clipped = maybe_clip_chunk_advantages_for_length(
+            output_token_ids=[11, 99, 13],
+            eos_token_id=99,
+            chunk_advantages=raw_chunk_advantages,
+            is_clip_length=True,
+        )
+
+        self.assertEqual(clipped_advantages, raw_chunk_advantages)
+        self.assertFalse(is_overflow)
+        self.assertFalse(is_length_clipped)
 
 
 class QwenTokenizerIntegrationTest(unittest.TestCase):

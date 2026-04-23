@@ -60,6 +60,10 @@ from .utils import (
 logger = logging.getLogger(__name__)
 
 from pipelinerl.finetune.data import MASKED_TOKEN_ID
+from pipelinerl.domains.math.process_reward_logging import (
+    aggregate_exp_rl_metric_values,
+    extract_exp_rl_metric_values,
+)
 
 
 
@@ -735,6 +739,7 @@ class ActorLoop:
 
     def init_stats(self):
         self.stats = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
+        self.exp_rl_stats = defaultdict(list)
         self.latency_list = []
         self.model_versions_list = []
         self.sliding_stats = defaultdict(list)
@@ -766,6 +771,13 @@ class ActorLoop:
                     self.stats[k][dataset_name][group_id].append(v)
                 else:
                     raise ValueError(f"Unsupported metric type: {type(v)} for key {k}")
+            if self.is_training:
+                for training_text in result.training_texts:
+                    process_reward_metrics = extract_exp_rl_metric_values(
+                        training_text.metadata.get("process_reward")
+                    )
+                    for metric_name, metric_values in process_reward_metrics.items():
+                        self.exp_rl_stats[metric_name].extend(metric_values)
         
         prompt_length_tokens = [training_text.prompt_tokens for result in rollout_results for training_text in result.training_texts]
         output_length_tokens = [training_text.output_tokens for result in rollout_results for training_text in result.training_texts]
@@ -1098,8 +1110,16 @@ class ActorLoop:
         stats |= loop_stats
         for k, v in self.sliding_stats.items():
             stats[k] = sum(v) / len(v) if v else 0
+        if self.is_training:
+            stats |= aggregate_exp_rl_metric_values(self.exp_rl_stats)
         if self.cfg.wandb.use_wandb:
-            wandb.log({f"actor/{k}": v for k, v in stats.items()})
+            wandb_payload = {}
+            for k, v in stats.items():
+                if k.startswith("exp_rl/"):
+                    wandb_payload[k] = v
+                else:
+                    wandb_payload[f"actor/{k}"] = v
+            wandb.log(wandb_payload)
         stats_writer.write(stats)
         self.init_stats()  # Reset stats for the next iteration
 

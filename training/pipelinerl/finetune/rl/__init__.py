@@ -402,6 +402,12 @@ def populate_rl_data(dataset: list[dict[str, Any]], eos_token_id: int, config: R
         df_init = pd.DataFrame(dataset)
         assert isinstance(df_init, pd.DataFrame)
 
+        # The preprocess stage already carries placeholder token-level
+        # `group_tokens`; drop it before merging scalar group stats back in to
+        # avoid pandas creating group_tokens_x/group_tokens_y and breaking the
+        # subsequent expansion step.
+        df_init = df_init.drop(columns=["group_tokens"], errors="ignore")
+
         df_stats = df_init[["group_id", "rollout_index", "step_index"]].copy()
         df_stats["num_tokens"] = df_init["input_ids"].apply(lambda x: len(x))
         df_stats = df_stats[df_stats["step_index"] == 0].drop(columns=["step_index"])

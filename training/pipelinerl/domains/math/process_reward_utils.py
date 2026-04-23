@@ -105,6 +105,30 @@ def compute_chunk_advantages(prefix_scores: Sequence[float]) -> list[float]:
     return advantages
 
 
+def maybe_clip_chunk_advantages_for_length(
+    output_token_ids: Sequence[int],
+    eos_token_id: int | None,
+    chunk_advantages: Sequence[float],
+    is_clip_length: bool = False,
+) -> tuple[list[float], bool, bool]:
+    """
+    Optionally zero process-reward advantages for overflowed generations.
+
+    Overflow is defined as the generated completion token ids not containing the
+    tokenizer EOS token. If EOS is unavailable, clipping is skipped.
+    """
+
+    clipped_advantages = [float(value) for value in chunk_advantages]
+    if not isinstance(eos_token_id, int):
+        return clipped_advantages, False, False
+
+    is_overflow = bool(output_token_ids) and eos_token_id not in output_token_ids
+    if not is_clip_length or not is_overflow:
+        return clipped_advantages, is_overflow, False
+
+    return [0.0] * len(clipped_advantages), is_overflow, True
+
+
 def compute_chunk_rewards(prefix_scores: Sequence[float]) -> list[float]:
     """
     Convert prefix scores into raw per-chunk rewards:

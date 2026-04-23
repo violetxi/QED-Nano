@@ -82,6 +82,7 @@ process_grader:
   name: google/gemini-3.1-flash-lite-preview
   prompt_name: exp_rl_pr_v1
   delimiter: "### "
+  is_clip_length: false
   normalize_by_token_count: true
   max_concurrency: 16
   timeout_seconds: 900

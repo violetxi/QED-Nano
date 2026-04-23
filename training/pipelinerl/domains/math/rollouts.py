@@ -17,6 +17,7 @@ from .process_reward_utils import (
     compute_chunk_advantages,
     compute_chunk_rewards,
     expand_output_token_values_to_labels,
+    maybe_clip_chunk_advantages_for_length,
     split_reward_chunks,
 )
 from .verifier_api import (
@@ -143,10 +144,7 @@ async def generate_math_rollout(
         process_grader_cfg is not None
         and process_grader_cfg.get("enabled", False)
         and problem.get("variants")
-    )
-
-    # logger.info(f"Generated training text. Now verifying with verifier API.")
-    # logger.info(f"Verifying generated reasoning: {generation_final_answer[:100]}")
+    )    
 
     # ===========================================================
     # PROOF-BASED SCORING BRANCH
@@ -194,7 +192,13 @@ async def generate_math_rollout(
             )
             prefix_scores = [float(result.score) for result in prefix_results]
             chunk_rewards = compute_chunk_rewards(prefix_scores)
-            chunk_advantages = compute_chunk_advantages(prefix_scores)
+            raw_chunk_advantages = compute_chunk_advantages(prefix_scores)
+            chunk_advantages, is_overflow, is_length_clipped = maybe_clip_chunk_advantages_for_length(
+                output_token_ids=output_token_ids,
+                eos_token_id=getattr(llm.tokenizer, "eos_token_id", None),
+                chunk_advantages=raw_chunk_advantages,
+                is_clip_length=bool(process_grader_cfg.get("is_clip_length", False)),
+            )
             normalize_by_token_count = bool(process_grader_cfg.get("normalize_by_token_count", True))
             token_rewards_output = assign_chunk_values_to_output_tokens(
                 num_output_tokens=len(output_token_ids),
@@ -222,7 +226,10 @@ async def generate_math_rollout(
                 "chunk_token_spans": chunk_token_spans,
                 "prefix_scores": prefix_scores,
                 "chunk_rewards": chunk_rewards,
+                "raw_chunk_advantages": raw_chunk_advantages,
                 "chunk_advantages": chunk_advantages,
+                "is_overflow": is_overflow,
+                "is_length_clipped": is_length_clipped,
                 "judge_outputs": [
                     {
                         "prefix_index": result.prefix_index,
@@ -250,7 +257,10 @@ async def generate_math_rollout(
                 "chunk_token_spans": [],
                 "prefix_scores": [],
                 "chunk_rewards": [],
+                "raw_chunk_advantages": [],
                 "chunk_advantages": [],
+                "is_overflow": False,
+                "is_length_clipped": False,
                 "judge_outputs": [],
             }
 

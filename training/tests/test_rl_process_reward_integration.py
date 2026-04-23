@@ -59,6 +59,7 @@ class PopulateRlDataProcessRewardTest(unittest.TestCase):
                 "labels": [-100, -100, 12, 13],
                 "rewards": [0.0, 0.0, 1.5, -0.5],
                 "advantages": [0.0, 0.0, 4.0, 2.0],
+                "group_tokens": [0.0, 0.0, 0.0, 0.0],
                 "overflow": [0.0, 0.0, 0.0, 0.0],
             },
             {
@@ -69,6 +70,7 @@ class PopulateRlDataProcessRewardTest(unittest.TestCase):
                 "labels": [-100, 21, 22],
                 "rewards": [0.0, 2.0, 1.0],
                 "advantages": [0.0, 6.0, 3.0],
+                "group_tokens": [0.0, 0.0, 0.0],
                 "overflow": [0.0, 0.0, 0.0],
             },
         ]
@@ -82,8 +84,8 @@ class PopulateRlDataProcessRewardTest(unittest.TestCase):
         self.assertEqual(populated[1]["advantages"], [0.0, 6.0, 3.0])
         self.assertEqual(populated[0]["num_labels"], [2, 2, 2, 2])
         self.assertEqual(populated[1]["num_labels"], [2, 2, 2])
-        self.assertTrue(all(value > 0 for value in populated[0]["group_tokens"]))
-        self.assertTrue(all(value > 0 for value in populated[1]["group_tokens"]))
+        self.assertEqual(populated[0]["group_tokens"], [3.5, 3.5, 3.5, 3.5])
+        self.assertEqual(populated[1]["group_tokens"], [3.5, 3.5, 3.5])
 
 
 if __name__ == "__main__":
