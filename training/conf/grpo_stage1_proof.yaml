@@ -60,7 +60,7 @@ llm_grader:
   provider: gemini
   name: google/gemini-3.1-flash-lite-preview
   sampling_kwargs:
-    temperature: 1.0
+    temperature: 0
     max_output_tokens: 16384
     thinking_level: medium
   reasoning_delimiters: []

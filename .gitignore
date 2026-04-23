@@ -218,3 +218,5 @@ outputs_old/
 logs/
 eval/outputs*
 slurm_logs/
+AGENTS.md
+ignore_*

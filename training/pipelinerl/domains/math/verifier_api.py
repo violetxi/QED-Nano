@@ -448,6 +448,11 @@ def _normalize_gemini_response(response: Any) -> GraderResponse:
     )
 
 
+def _resolve_gemini_async_client(client: Any):
+    """Return an async-capable Gemini client wrapper from a cached base client."""
+    return getattr(client, "aio", client)
+
+
 def _should_collect_metrics(collect_flag: bool | None) -> bool:
     if collect_flag is None:
         return True
@@ -618,13 +623,11 @@ async def verify_proof(
     async def _call_gemini():
         gemini_model = _strip_google_prefix(model)
         gemini_config = _build_gemini_config(api_kwargs)
-        return await loop.run_in_executor(
-            None,
-            lambda: client.models.generate_content(
-                model=gemini_model,
-                contents=prompt_text,
-                config=gemini_config,
-            ),
+        gemini_async_client = _resolve_gemini_async_client(client)
+        return await gemini_async_client.models.generate_content(
+            model=gemini_model,
+            contents=prompt_text,
+            config=gemini_config,
         )
 
     async def _call_grader():
