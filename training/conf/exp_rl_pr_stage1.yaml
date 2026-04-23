@@ -36,7 +36,7 @@ finetune:
     entropy_bonus: 0.0001
     final_entropy_bonus: ${finetune.rl.entropy_bonus}
     overlong_filtering: false
-  save_checkpoint_steps: 20
+  save_checkpoint_steps: 1
   push_to_hub: false
   hub_model_id: null
   hub_model_revision: main
@@ -84,7 +84,7 @@ process_grader:
   delimiter: "### "
   is_clip_length: false
   normalize_by_token_count: true
-  max_concurrency: 16
+  max_concurrency: 64
   timeout_seconds: 900
   max_retries: 3
   retry_backoff: [15, 30, 60, 90, 120]

@@ -87,8 +87,7 @@ srun -w "$HOSTLIST" --ntasks-per-node=1 \
       output_dir=results/grpo_10a2f \
       world.actor_start_port=18080 \
       world.actor_fraction=10 \
-      world.finetune_fraction=2 \
-      actor.llm_max_rollouts=16 \
+      world.finetune_fraction=2 \      
       finetune.seq_length=24576 \
       finetune.seq_parallel=2      
   '
