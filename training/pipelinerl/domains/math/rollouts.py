@@ -11,7 +11,20 @@ from tapeagents.core import Prompt
 from tapeagents.llms.trainable import TrainableLLM
 
 from pipelinerl.async_llm import llm_async_generate, make_training_text
-from .verifier_api import verify_answer_rpc, verify_proof, parse_schema
+from .process_reward_utils import (
+    DEFAULT_STEP_DELIMITER,
+    assign_chunk_values_to_output_tokens,
+    compute_chunk_advantages,
+    compute_chunk_rewards,
+    expand_output_token_values_to_labels,
+    split_reward_chunks,
+)
+from .verifier_api import (
+    verify_answer_rpc,
+    verify_proof,
+    parse_schema,
+    score_proof_prefixes,
+)
 
 import logging
 logging.basicConfig(
@@ -19,6 +32,14 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+
+def _strip_trailing_chat_tokens(text: str) -> str:
+    stripped = text
+    for token in ("<|im_end|>", "</s>", "<|endoftext|>"):
+        while stripped.endswith(token):
+            stripped = stripped[: -len(token)].rstrip()
+    return stripped
 
 def remove_reasoning(completion: str, reasoning_delimiters: list[str] = None) -> str:
     # Treat empty lists like None (no delimiter-based stripping).
@@ -117,6 +138,12 @@ async def generate_math_rollout(
     discount_factor = actor_cfg.discount_factor
 
     trace = make_training_text(llm, llm_call)
+    process_grader_cfg = cfg.get("process_grader", None)
+    process_reward_enabled = bool(
+        process_grader_cfg is not None
+        and process_grader_cfg.get("enabled", False)
+        and problem.get("variants")
+    )
 
     # logger.info(f"Generated training text. Now verifying with verifier API.")
     # logger.info(f"Verifying generated reasoning: {generation_final_answer[:100]}")
@@ -126,7 +153,116 @@ async def generate_math_rollout(
     # ===========================================================
     verifier_metrics: dict[str, float | int] = {}
     verifier_table_entry: dict[str, str | int] | None = None
-    if "schema" in problem:
+    if process_reward_enabled:
+        output_token_ids = [token_id for token_id in trace.labels if token_id != -100]
+        if output_token_ids:
+            decode_token = lambda token_id: llm.tokenizer.decode(
+                [token_id],
+                skip_special_tokens=False,
+                clean_up_tokenization_spaces=False,
+            )
+            delimiter = process_grader_cfg.get("delimiter", DEFAULT_STEP_DELIMITER)
+            chunks = split_reward_chunks(
+                output_token_ids,
+                decode_token=decode_token,
+                delimiter=delimiter,
+            )
+            chunk_token_spans = [chunk.token_span for chunk in chunks]
+            prefix_texts = [
+                _strip_trailing_chat_tokens(
+                    llm.tokenizer.decode(
+                        output_token_ids[:chunk.token_span[1]],
+                        skip_special_tokens=False,
+                        clean_up_tokenization_spaces=False,
+                    )
+                )
+                for chunk in chunks
+            ]
+            prefix_results = await score_proof_prefixes(
+                problem=problem["task"],
+                ref_solution=problem["answer"],
+                variants=problem.get("variants", []),
+                prefix_texts=prefix_texts,
+                prompt_name=process_grader_cfg.get("prompt_name", None),
+                model=process_grader_cfg.get("name", None),
+                sampling_kwargs=process_grader_cfg.get("sampling_kwargs", None),
+                timeout_seconds=process_grader_cfg.get("timeout_seconds", 900),
+                max_retries=process_grader_cfg.get("max_retries", 3),
+                retry_backoff=list(process_grader_cfg.get("retry_backoff", [15, 30, 60, 90, 120])),
+                provider=process_grader_cfg.get("provider", None),
+                max_concurrency=process_grader_cfg.get("max_concurrency", None),
+            )
+            prefix_scores = [float(result.score) for result in prefix_results]
+            chunk_rewards = compute_chunk_rewards(prefix_scores)
+            chunk_advantages = compute_chunk_advantages(prefix_scores)
+            normalize_by_token_count = bool(process_grader_cfg.get("normalize_by_token_count", True))
+            token_rewards_output = assign_chunk_values_to_output_tokens(
+                num_output_tokens=len(output_token_ids),
+                chunk_token_spans=chunk_token_spans,
+                chunk_values=chunk_rewards,
+                normalize_by_token_count=normalize_by_token_count,
+            )
+            token_advantages_output = assign_chunk_values_to_output_tokens(
+                num_output_tokens=len(output_token_ids),
+                chunk_token_spans=chunk_token_spans,
+                chunk_values=chunk_advantages,
+                normalize_by_token_count=normalize_by_token_count,
+            )
+            trace.token_rewards = expand_output_token_values_to_labels(
+                labels=trace.labels,
+                output_token_values=token_rewards_output,
+            )
+            trace.token_advantages = expand_output_token_values_to_labels(
+                labels=trace.labels,
+                output_token_values=token_advantages_output,
+            )
+            trace.reward = prefix_scores[-1] if prefix_scores else 0.0
+            trace.metadata["process_reward"] = {
+                "delimiter": delimiter,
+                "chunk_token_spans": chunk_token_spans,
+                "prefix_scores": prefix_scores,
+                "chunk_rewards": chunk_rewards,
+                "chunk_advantages": chunk_advantages,
+                "judge_outputs": [
+                    {
+                        "prefix_index": result.prefix_index,
+                        "score": result.score,
+                        "aligned_path": result.aligned_path,
+                        "why": result.why,
+                        "output_text": result.output_text,
+                    }
+                    for result in prefix_results
+                ],
+            }
+            verifier_metrics = {
+                "process_reward/final_prefix_score": trace.reward,
+                "process_reward/mean_prefix_score": (
+                    sum(prefix_scores) / len(prefix_scores) if prefix_scores else 0.0
+                ),
+                "process_reward/num_prefixes": len(prefix_scores),
+            }
+        else:
+            trace.token_rewards = [0.0] * len(trace.labels)
+            trace.token_advantages = [0.0] * len(trace.labels)
+            trace.reward = 0.0
+            trace.metadata["process_reward"] = {
+                "delimiter": process_grader_cfg.get("delimiter", DEFAULT_STEP_DELIMITER),
+                "chunk_token_spans": [],
+                "prefix_scores": [],
+                "chunk_rewards": [],
+                "chunk_advantages": [],
+                "judge_outputs": [],
+            }
+
+        metrics = Metrics(
+            reward=trace.reward,
+            success=trace.reward == 5,
+            no_error=True,
+            no_answer=not bool(output_token_ids),
+            penalty=0.0,
+        )
+
+    elif "schema" in problem:
         llm_grader_cfg = cfg.get("llm_grader", None)
         wandb_table_cfg = llm_grader_cfg.get("wandb_table", None) if llm_grader_cfg is not None else None
         wandb_table_enabled = True

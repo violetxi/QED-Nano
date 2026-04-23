@@ -36,6 +36,33 @@ def process_proof_problem(dataset, dataset_name):
             "schema": row["rubrics"],        # marking scheme
         }
 
+
+def process_proof_problem_exp_rl(dataset, dataset_name):
+    for row in dataset:
+        variants = row.get("variants") or []
+        if isinstance(variants, str):
+            variants = [variants]
+        variants = [variant.strip() for variant in variants if isinstance(variant, str) and variant.strip()]
+        if not variants:
+            raise ValueError("ExpRL proof dataset rows must include at least one non-empty variant")
+
+        answer = (
+            row.get("solution")
+            or row.get("reference_body")
+            or row.get("reference_full")
+            or ""
+        )
+        if not isinstance(answer, str) or not answer.strip():
+            raise ValueError("ExpRL proof dataset rows must include a non-empty reference solution")
+
+        yield {
+            "dataset": dataset_name,
+            "task": row["problem"],
+            "answer": answer,
+            "schema": row.get("rubrics", ""),
+            "variants": variants,
+        }
+
 def process_proofbench_problem(dataset, dataset_name):
     for row in dataset:
         # Support both old (capitalized) and new (lowercase) ProofBench column names
@@ -284,8 +311,7 @@ def load_datasets(
                     raise NotImplementedError("OPD proof train type not implemented")
                     # samples = [s for s in process_proof_problem_opd(dataset, hub_id.split("/")[-1]) if s is not None]
                 elif proof_train_type == "exp_rl":
-                    raise NotImplementedError("ExpRL proof train type not implemented")
-                    # samples = [s for s in process_proof_problem_exp_rl(dataset, hub_id.split("/")[-1]) if s is not None]
+                    samples = [s for s in process_proof_problem_exp_rl(dataset, hub_id.split("/")[-1]) if s is not None]
             elif hub_id in PROOFBENCH_DATASETS:
                 samples = [s for s in process_proofbench_problem(dataset, hub_id.split("/")[-1]) if s is not None]
             else:

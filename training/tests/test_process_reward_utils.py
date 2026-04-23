@@ -19,6 +19,7 @@ sys.modules[SPEC.name] = process_reward_utils
 SPEC.loader.exec_module(process_reward_utils)
 
 assign_chunk_values_to_output_tokens = process_reward_utils.assign_chunk_values_to_output_tokens
+compute_chunk_rewards = process_reward_utils.compute_chunk_rewards
 compute_chunk_advantages = process_reward_utils.compute_chunk_advantages
 expand_output_token_values_to_labels = process_reward_utils.expand_output_token_values_to_labels
 split_reward_chunks = process_reward_utils.split_reward_chunks
@@ -99,6 +100,23 @@ class AssignChunkValuesToLabelsTest(unittest.TestCase):
         self.assertEqual(values[8], 5.0)
         self.assertAlmostEqual(sum(values), sum(chunk_values))
 
+    def test_maps_raw_rewards_only_to_output_tokens(self) -> None:
+        input_ids = [1, 2, 3, 4, 5, 3, 6]
+        chunks = split_reward_chunks(input_ids, decode_token)
+        chunk_values = compute_chunk_rewards([3.0, 5.0, 5.0])
+
+        values = assign_chunk_values_to_output_tokens(
+            num_output_tokens=len(input_ids),
+            chunk_token_spans=[chunk.token_span for chunk in chunks],
+            chunk_values=chunk_values,
+            normalize_by_token_count=True,
+        )
+
+        self.assertEqual(values[:3], [1.0, 1.0, 1.0])
+        self.assertEqual(values[3:6], [2.0 / 3.0, 2.0 / 3.0, 2.0 / 3.0])
+        self.assertEqual(values[6], 0.0)
+        self.assertAlmostEqual(sum(values), sum(chunk_values))
+
     def test_disable_normalization_keeps_full_chunk_value_per_token(self) -> None:
         input_ids = [1, 2, 3, 4, 5, 3, 6]
         reward_chunks = split_reward_chunks(input_ids, decode_token)
@@ -121,8 +139,12 @@ class AssignChunkValuesToLabelsTest(unittest.TestCase):
 
 
 class ChunkAdvantageTest(unittest.TestCase):
+    def test_chunk_rewards_are_prefix_deltas(self) -> None:
+        self.assertEqual(compute_chunk_rewards([2.0, 4.0, 3.0]), [2.0, 2.0, -1.0])
+
     def test_empty_scores(self) -> None:
         self.assertEqual(compute_chunk_advantages([]), [])
+        self.assertEqual(compute_chunk_rewards([]), [])
 
     def test_single_score(self) -> None:
         self.assertEqual(compute_chunk_advantages([4.0]), [4.0])

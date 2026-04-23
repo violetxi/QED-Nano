@@ -105,6 +105,23 @@ def compute_chunk_advantages(prefix_scores: Sequence[float]) -> list[float]:
     return advantages
 
 
+def compute_chunk_rewards(prefix_scores: Sequence[float]) -> list[float]:
+    """
+    Convert prefix scores into raw per-chunk rewards:
+
+    r_1 = s_1
+    r_t = s_t - s_{t-1} for t > 1
+    """
+
+    if not prefix_scores:
+        return []
+
+    rewards = [float(prefix_scores[0])]
+    for idx in range(1, len(prefix_scores)):
+        rewards.append(float(prefix_scores[idx] - prefix_scores[idx - 1]))
+    return rewards
+
+
 def assign_chunk_values_to_output_tokens(
     num_output_tokens: int,
     chunk_token_spans: Sequence[tuple[int, int]],

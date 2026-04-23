@@ -154,6 +154,8 @@ def preprocess_fn(
             entry["reward"],
             entry["logprobs"],
             entry["ref_logprobs"],
+            token_rewards=entry.get("token_rewards") or None,
+            token_advantages=entry.get("token_advantages") or None,
         )
     
     # Preserve visual fields if they exist

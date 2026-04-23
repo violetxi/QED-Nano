@@ -1,7 +1,7 @@
 import logging
 import os
 from functools import partial
-from typing import Any
+from typing import Any, TYPE_CHECKING
 from pydantic import BaseModel, Field
 
 import numpy as np
@@ -9,8 +9,12 @@ import pandas as pd
 import torch
 import torch.nn.functional as F
 from datasets import Dataset
-from transformers import PreTrainedModel
 from pipelinerl.finetune.types import PipelineBatchEncoding
+
+if TYPE_CHECKING:
+    from transformers import PreTrainedModel
+else:
+    PreTrainedModel = Any
 
 from .utils import (
     sum_sum,
@@ -96,6 +100,10 @@ class RLConfig(BaseModel):
     value_loss_coef: float = Field(
         default=0.0,
         description="Coefficient for the value loss in the final loss",
+    )
+    precomputed_token_advantages: bool = Field(
+        default=False,
+        description="Use precomputed token-level rewards and advantages without recomputing them in preprocessing",
     )
 
 
@@ -390,6 +398,47 @@ def populate_rl_data(dataset: list[dict[str, Any]], eos_token_id: int, config: R
     Returns:
         Dataset: The dataset populated with RL-specific columns
     """
+    if config.precomputed_token_advantages:
+        df_init = pd.DataFrame(dataset)
+        assert isinstance(df_init, pd.DataFrame)
+
+        df_stats = df_init[["group_id", "rollout_index", "step_index"]].copy()
+        df_stats["num_tokens"] = df_init["input_ids"].apply(lambda x: len(x))
+        df_stats = df_stats[df_stats["step_index"] == 0].drop(columns=["step_index"])
+        df_grouped = (
+            df_stats.groupby("group_id")
+            .agg(
+                group_tokens=("num_tokens", "mean"),
+            )
+            .reset_index()
+        )
+        assert df_grouped.columns.tolist() == ["group_id", "group_tokens"]
+
+        df = pd.merge(
+            df_init,
+            df_grouped,
+            on="group_id",
+            how="left",
+        )
+        assert len(df) == len(df_init)
+        df["overflow"] = df.apply(
+            lambda row: [0.0] * len(row["overflow"]) if eos_token_id in row["input_ids"] else [1.0] * len(row["overflow"]),
+            axis=1,
+        )
+        df["group_tokens"] = df.apply(lambda row: [row["group_tokens"]] * len(row["input_ids"]), axis=1)
+        df["num_labels"] = df.apply(
+            lambda row: [sum(1 for label in row["labels"] if label != -100)] * len(row["input_ids"]),
+            axis=1,
+        )
+
+        for i, entry in enumerate(dataset):
+            entry["rewards"] = df["rewards"].tolist()[i]
+            entry["advantages"] = df["advantages"].tolist()[i]
+            entry["group_tokens"] = df["group_tokens"].tolist()[i]
+            entry["overflow"] = df["overflow"].tolist()[i]
+            entry["num_labels"] = df["num_labels"].tolist()[i]
+        return dataset
+
     # Convert to pandas for processing
     df_init = pd.DataFrame(dataset)
     assert isinstance(df_init, pd.DataFrame)
@@ -470,6 +519,8 @@ def prepare_rl_fields(
     reward: float,
     old_logprobs: list[float],
     ref_logprobs: list[float],
+    token_rewards: list[float] | None = None,
+    token_advantages: list[float] | None = None,
 ) -> dict[str, Any]:
     """
     Convert reward per agent step to reward per token and add returns and advantages placeholders
@@ -479,8 +530,27 @@ def prepare_rl_fields(
         f"Target tokens: {len(target_tokens)}, old logprobs: {len(old_logprobs)}"
     )
 
-    encoding["rewards"] = [reward] * len(encoding["labels"])
-    encoding["advantages"] = [0.0] * len(encoding["labels"])  # place holder
+    if token_rewards == []:
+        token_rewards = None
+    if token_advantages == []:
+        token_advantages = None
+
+    if token_rewards is not None:
+        if len(token_rewards) != len(encoding["labels"]):
+            raise ValueError(
+                f"token_rewards length {len(token_rewards)} does not match labels length {len(encoding['labels'])}"
+            )
+        encoding["rewards"] = list(token_rewards)
+    else:
+        encoding["rewards"] = [reward] * len(encoding["labels"])
+    if token_advantages is not None:
+        if len(token_advantages) != len(encoding["labels"]):
+            raise ValueError(
+                f"token_advantages length {len(token_advantages)} does not match labels length {len(encoding['labels'])}"
+            )
+        encoding["advantages"] = list(token_advantages)
+    else:
+        encoding["advantages"] = [0.0] * len(encoding["labels"])  # place holder
     encoding["old_logprobs"] = [0] * (len(encoding["labels"]) - len(old_logprobs)) + old_logprobs
     encoding["ref_logprobs"] = [0] * (len(encoding["labels"]) - len(ref_logprobs)) + ref_logprobs
     encoding["overflow"] = [0] * len(encoding["labels"])  # place holder

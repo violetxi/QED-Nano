@@ -9,7 +9,7 @@ import argparse
 import json
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Sequence
 from pathlib import Path
 from datetime import datetime
 
@@ -296,12 +296,25 @@ def parse_schema(schema: Any) -> str:
     return "\n\n".join(sections)
 
 _grader_clients: dict[str, Any] = {}
+_PROCESS_WHY_PATTERN = re.compile(r"^Why:\s*(.+)$")
+_PROCESS_ALIGNED_PATH_PATTERN = re.compile(r"^Aligned path:\s*(Reference|Variant\s+\d+|None)\s*$")
+_PROCESS_SCORE_PATTERN = re.compile(r"^Score:\s*([1-5])\s*$")
 
 @dataclass
 class ProofVerificationResult:
     score: int
     metrics: dict[str, float | int] = field(default_factory=dict)
     table_entry: dict[str, str | int] | None = None
+
+
+@dataclass
+class ProcessJudgeResult:
+    prefix_index: int
+    score: int
+    aligned_path: str | None = None
+    why: str | None = None
+    output_text: str = ""
+    reasoning_text: str = ""
 
 
 @dataclass
@@ -551,6 +564,60 @@ def _classify_gemini_exception(exc: Exception) -> str:
     return "other"
 
 
+def format_variants_block(variants: Sequence[str] | None) -> str:
+    cleaned_variants = [
+        variant.strip()
+        for variant in (variants or [])
+        if isinstance(variant, str) and variant.strip()
+    ]
+    if not cleaned_variants:
+        return "(no variants provided)"
+    return "\n\n".join(
+        f"--- Variant {idx + 1} ---\n{variant}"
+        for idx, variant in enumerate(cleaned_variants)
+    )
+
+
+def parse_process_judge_response(text: str) -> ProcessJudgeResult | None:
+    why = None
+    aligned_path = None
+    score = None
+
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+
+        if why is None:
+            why_match = _PROCESS_WHY_PATTERN.match(line)
+            if why_match is not None:
+                why = why_match.group(1)
+                continue
+
+        if aligned_path is None:
+            aligned_match = _PROCESS_ALIGNED_PATH_PATTERN.match(line)
+            if aligned_match is not None:
+                aligned_path = aligned_match.group(1)
+                continue
+
+        if score is None:
+            score_match = _PROCESS_SCORE_PATTERN.match(line)
+            if score_match is not None:
+                score = int(score_match.group(1))
+                continue
+
+    if score is None:
+        return None
+
+    return ProcessJudgeResult(
+        prefix_index=-1,
+        score=score,
+        aligned_path=aligned_path,
+        why=why,
+        output_text=text,
+    )
+
+
 # =================================================
 # Proof evaluator: dispatches to OpenAI-compatible or Gemini grader
 # =================================================
@@ -737,6 +804,150 @@ async def verify_proof(
         score=0,
         metrics=_merge_metrics(runtime_metrics, rollout_metrics),
     )
+
+
+async def score_proof_prefixes(
+    problem: str,
+    ref_solution: str,
+    variants: Sequence[str],
+    prefix_texts: Sequence[str],
+    prompt_name: str | os.PathLike | None = None,
+    model: str | None = None,
+    sampling_kwargs: dict[str, Any] | None = None,
+    client=None,
+    timeout_seconds: int = 900,
+    max_retries: int = 3,
+    retry_backoff: list[int] = [15, 30, 60, 90, 120],
+    provider: str | None = None,
+    max_concurrency: int | None = None,
+) -> list[ProcessJudgeResult]:
+    """
+    Score each proof prefix independently with the process-reward judge prompt.
+
+    Returns one parsed result per prefix. Failed parses or exhausted retries
+    fall back to score=0 for that prefix.
+    """
+    if not model:
+        raise RuntimeError("score_proof_prefixes requires a grader model name; pass via cfg.process_grader.name")
+
+    if not prefix_texts:
+        return []
+
+    resolved_provider = resolve_provider(model, provider)
+    client = client or get_grader_client(resolved_provider)
+    prompt_template = load_evaluator_prompt(prompt_name)
+    variants_text = format_variants_block(variants)
+    api_kwargs = dict(sampling_kwargs) if sampling_kwargs else {}
+    semaphore = asyncio.Semaphore(max_concurrency) if max_concurrency and max_concurrency > 0 else None
+    loop = asyncio.get_event_loop()
+
+    async def _call_openai(prompt_text: str):
+        return await loop.run_in_executor(
+            None,
+            lambda: client.responses.create(
+                model=model,
+                input=prompt_text,
+                **api_kwargs,
+            ),
+        )
+
+    async def _call_gemini(prompt_text: str):
+        gemini_model = _strip_google_prefix(model)
+        gemini_config = _build_gemini_config(api_kwargs)
+        gemini_async_client = _resolve_gemini_async_client(client)
+        return await gemini_async_client.models.generate_content(
+            model=gemini_model,
+            contents=prompt_text,
+            config=gemini_config,
+        )
+
+    async def _call_grader(prompt_text: str):
+        if resolved_provider == "gemini":
+            return await _call_gemini(prompt_text)
+        return await _call_openai(prompt_text)
+
+    def _normalize(raw) -> GraderResponse:
+        if resolved_provider == "gemini":
+            return _normalize_gemini_response(raw)
+        return _normalize_openai_response(raw)
+
+    async def _score_single_prefix(prefix_index: int, prefix_text: str) -> ProcessJudgeResult:
+        prompt_text = prompt_template.format(
+            problem=problem,
+            reasoning_so_far=prefix_text,
+            reference_solution=ref_solution,
+            variants_block=variants_text,
+        )
+        failure_causes: list[str] = []
+
+        for attempt in range(1, max_retries + 1):
+            try:
+                async def _run_call():
+                    return await _call_grader(prompt_text)
+
+                if semaphore is None:
+                    response = await asyncio.wait_for(_run_call(), timeout=timeout_seconds)
+                else:
+                    async with semaphore:
+                        response = await asyncio.wait_for(_run_call(), timeout=timeout_seconds)
+
+                normalized = _normalize(response)
+                parsed = parse_process_judge_response(normalized.output_text)
+                if parsed is not None:
+                    parsed.prefix_index = prefix_index
+                    parsed.output_text = normalized.output_text
+                    parsed.reasoning_text = normalized.reasoning_text
+                    return parsed
+
+                print(
+                    f"[score_proof_prefixes]: {_timestamp()} - No parsable score for prefix {prefix_index} "
+                    f"(attempt {attempt}) — returning 0"
+                )
+                return ProcessJudgeResult(
+                    prefix_index=prefix_index,
+                    score=0,
+                    output_text=normalized.output_text,
+                    reasoning_text=normalized.reasoning_text,
+                )
+
+            except openai.RateLimitError as e:
+                wait_time = retry_backoff[min(attempt - 1, len(retry_backoff) - 1)]
+                failure_causes.append("rate_limit")
+                print(
+                    f"[score_proof_prefixes]: {_timestamp()} - Rate limit hit for prefix {prefix_index} "
+                    f"(attempt {attempt}/{max_retries}), sleeping {wait_time}s: {e}"
+                )
+                await asyncio.sleep(wait_time)
+
+            except (asyncio.TimeoutError, TimeoutException):
+                wait_time = retry_backoff[min(attempt - 1, len(retry_backoff) - 1)]
+                failure_causes.append("timeout")
+                print(
+                    f"[score_proof_prefixes]: {_timestamp()} - Timeout after {timeout_seconds}s for prefix {prefix_index} "
+                    f"(attempt {attempt}/{max_retries}), retrying in {wait_time}s..."
+                )
+                await asyncio.sleep(wait_time)
+
+            except Exception as e:
+                wait_time = retry_backoff[min(attempt - 1, len(retry_backoff) - 1)]
+                cause = _classify_gemini_exception(e) if resolved_provider == "gemini" else "other"
+                failure_causes.append(cause)
+                print(
+                    f"[score_proof_prefixes]: {_timestamp()} - Error for prefix {prefix_index} "
+                    f"on attempt {attempt}/{max_retries} ({cause}): {e}, retrying in {wait_time}s..."
+                )
+                await asyncio.sleep(wait_time)
+
+        print(
+            f"[score_proof_prefixes]: {_timestamp()} - All {max_retries} attempts failed for prefix {prefix_index} "
+            f"({failure_causes}) — returning 0"
+        )
+        return ProcessJudgeResult(prefix_index=prefix_index, score=0)
+
+    results = await asyncio.gather(
+        *(_score_single_prefix(prefix_index, prefix_text) for prefix_index, prefix_text in enumerate(prefix_texts))
+    )
+    return list(results)
 
 class MathProofEnvironment:
     def __init__(
