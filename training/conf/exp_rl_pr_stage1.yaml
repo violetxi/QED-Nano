@@ -81,7 +81,7 @@ process_grader:
   provider: gemini
   name: google/gemini-3.1-flash-lite-preview
   prompt_name: exp_rl_pr_v1
-  delimiter: "### "
+  delimiter: "###"
   is_clip_length: false
   normalize_by_token_count: true
   max_concurrency: 64
@@ -94,7 +94,7 @@ process_grader:
     thinking_level: medium
 
 actor:
-  llm_max_rollouts: 64
+  llm_max_rollouts: 32
   max_retries: 10
   shared_memory_entry_size: 2000000000
   rollout_policy: pipelinerl.domains.math.generate_math_rollout
@@ -126,7 +126,7 @@ vllm_config:
   use_v1: false
   vllm_kwargs:
     dtype: bfloat16
-    gpu-memory-utilization: 0.9
+    gpu-memory-utilization: 0.85
     num-scheduler-steps: 1
     disable-log-requests: ""
     disable-frontend-multiprocessing: ""

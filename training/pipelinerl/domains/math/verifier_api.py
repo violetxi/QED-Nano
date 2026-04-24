@@ -315,6 +315,8 @@ class ProcessJudgeResult:
     why: str | None = None
     output_text: str = ""
     reasoning_text: str = ""
+    parse_failed: bool = False
+    failure_cause: str | None = None
 
 
 @dataclass
@@ -824,8 +826,8 @@ async def score_proof_prefixes(
     """
     Score each proof prefix independently with the process-reward judge prompt.
 
-    Returns one parsed result per prefix. Failed parses or exhausted retries
-    fall back to score=0 for that prefix.
+    Returns one parsed result per prefix. Failed parses are retried; exhausted
+    parses or API retries fall back to score=0 and mark the result invalid.
     """
     if not model:
         raise RuntimeError("score_proof_prefixes requires a grader model name; pass via cfg.process_grader.name")
@@ -899,15 +901,27 @@ async def score_proof_prefixes(
                     parsed.reasoning_text = normalized.reasoning_text
                     return parsed
 
+                failure_causes.append("no_score_tag")
+                if attempt < max_retries:
+                    wait_time = retry_backoff[min(attempt - 1, len(retry_backoff) - 1)]
+                    print(
+                        f"[score_proof_prefixes]: {_timestamp()} - No parsable score for prefix {prefix_index} "
+                        f"(attempt {attempt}/{max_retries}), retrying in {wait_time}s..."
+                    )
+                    await asyncio.sleep(wait_time)
+                    continue
+
                 print(
                     f"[score_proof_prefixes]: {_timestamp()} - No parsable score for prefix {prefix_index} "
-                    f"(attempt {attempt}) — returning 0"
+                    f"after {max_retries} attempts — marking trajectory invalid"
                 )
                 return ProcessJudgeResult(
                     prefix_index=prefix_index,
                     score=0,
                     output_text=normalized.output_text,
                     reasoning_text=normalized.reasoning_text,
+                    parse_failed=True,
+                    failure_cause="no_score_tag",
                 )
 
             except openai.RateLimitError as e:
@@ -942,7 +956,12 @@ async def score_proof_prefixes(
             f"[score_proof_prefixes]: {_timestamp()} - All {max_retries} attempts failed for prefix {prefix_index} "
             f"({failure_causes}) — returning 0"
         )
-        return ProcessJudgeResult(prefix_index=prefix_index, score=0)
+        return ProcessJudgeResult(
+            prefix_index=prefix_index,
+            score=0,
+            parse_failed=True,
+            failure_cause="all_attempts_failed",
+        )
 
     results = await asyncio.gather(
         *(_score_single_prefix(prefix_index, prefix_text) for prefix_index, prefix_text in enumerate(prefix_texts))

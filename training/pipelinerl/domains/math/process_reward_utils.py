@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Callable, Sequence
+from typing import Sequence
+
+import torch
 
 
 MASKED_TOKEN_ID = -100
 DEFAULT_STEP_DELIMITER = "### "
-TokenDecoder = Callable[[int], str]
 
 
 @dataclass(frozen=True)
@@ -26,57 +27,38 @@ def validate_ordered_spans(length: int, spans: Sequence[tuple[int, int]]) -> Non
             raise ValueError(f"Spans {start1}:{end1} and {start2}:{end2} overlap")
 
 
-def _find_delimiter_boundaries(
-    input_ids: Sequence[int],
-    decode_token: TokenDecoder,
-    delimiter: str = DEFAULT_STEP_DELIMITER,
+def _find_delimiter_starts(
+    input_ids: torch.Tensor,
+    delimiter_token_id: int,
 ) -> list[int]:
-    if not delimiter:
-        raise ValueError("delimiter must be a non-empty string")
-
-    boundaries: list[int] = []
-    prefix_text = ""
-    search_from = 0
-
-    for token_idx, token_id in enumerate(input_ids):
-        prefix_text += decode_token(token_id)
-        while True:
-            delimiter_pos = prefix_text.find(delimiter, search_from)
-            if delimiter_pos == -1:
-                break
-            boundary = token_idx + 1
-            if boundaries and boundary == boundaries[-1]:
-                raise ValueError(
-                    "Multiple delimiter completions inside the same token are not representable in token space"
-                )
-            boundaries.append(boundary)
-            search_from = delimiter_pos + len(delimiter)
-    return boundaries
+    if input_ids.ndim != 1:
+        raise ValueError(f"input_ids must be 1D, got shape {tuple(input_ids.shape)}")
+    if not isinstance(delimiter_token_id, int):
+        raise ValueError(f"delimiter_token_id must be an int, got {type(delimiter_token_id).__name__}")
+    return torch.nonzero(input_ids == delimiter_token_id, as_tuple=False).flatten().tolist()
 
 
 def split_reward_chunks(
-    input_ids: Sequence[int],
-    decode_token: TokenDecoder,
-    delimiter: str = DEFAULT_STEP_DELIMITER,
+    input_ids: torch.Tensor,
+    delimiter_token_id: int,
 ) -> list[RewardChunk]:
-    token_spans: list[tuple[int, int]] = []
-    start = 0
-    boundaries = _find_delimiter_boundaries(
+    if input_ids.ndim != 1:
+        raise ValueError(f"input_ids must be 1D, got shape {tuple(input_ids.shape)}")
+
+    num_tokens = int(input_ids.numel())
+    delimiter_starts = _find_delimiter_starts(
         input_ids=input_ids,
-        decode_token=decode_token,
-        delimiter=delimiter,
+        delimiter_token_id=delimiter_token_id,
     )
-    for boundary in boundaries:
-        if boundary <= start:
-            raise ValueError(
-                f"Delimiter boundary {boundary} does not advance past prior chunk start {start}"
-            )
-        token_spans.append((start, boundary))
-        start = boundary
-    if start == len(input_ids) and input_ids:
-        raise ValueError("Trace ends with a delimiter, leaving an empty final chunk")
-    token_spans.append((start, len(input_ids)))
-    validate_ordered_spans(len(input_ids), token_spans)
+    if not delimiter_starts:
+        token_spans = [(0, num_tokens)]
+    else:
+        token_spans = [
+            (start, next_start)
+            for start, next_start in zip(delimiter_starts, delimiter_starts[1:])
+        ]
+        token_spans.append((delimiter_starts[-1], num_tokens))
+    validate_ordered_spans(num_tokens, token_spans)
 
     return [
         RewardChunk(
@@ -89,7 +71,7 @@ def split_reward_chunks(
 
 def compute_chunk_advantages(prefix_scores: Sequence[float]) -> list[float]:
     """
-    Convert prefix scores into the heuristic chunk advantages:
+    Convert prefix scores into heuristic per-chunk advantages:
 
     a_1 = s_1
     a_t = (s_t - s_{t-1}) + s_final for t > 1
@@ -103,6 +85,42 @@ def compute_chunk_advantages(prefix_scores: Sequence[float]) -> list[float]:
     for idx in range(1, len(prefix_scores)):
         advantages.append(float(prefix_scores[idx] - prefix_scores[idx - 1] + final_score))
     return advantages
+
+
+def normalize_prefix_scores(
+    prefix_scores: Sequence[float],
+    min_score: float = 1.0,
+    max_score: float = 5.0,
+) -> list[float]:
+    """
+    Map process-judge scores onto [0, 1] before reward/advantage deltas.
+
+    Gemini returns a 1-5 score. Synthetic failure scores use 0, which should stay
+    at 0 instead of becoming negative under the 1-5 affine transform.
+    """
+
+    if max_score <= min_score:
+        raise ValueError("max_score must be greater than min_score")
+
+    score_range = max_score - min_score
+    normalized_scores: list[float] = []
+    for score in prefix_scores:
+        score_value = float(score)
+        if score_value <= 0.0:
+            normalized_scores.append(0.0)
+            continue
+        clipped_score = min(max(score_value, min_score), max_score)
+        normalized_scores.append((clipped_score - min_score) / score_range)
+    return normalized_scores
+
+
+def validate_unit_interval(values: Sequence[float], name: str) -> None:
+    """Validate values that are expected to be probabilities or normalized scores."""
+
+    for idx, value in enumerate(values):
+        value = float(value)
+        if value < 0.0 or value > 1.0:
+            raise ValueError(f"{name}[{idx}]={value} is outside [0, 1]")
 
 
 def maybe_clip_chunk_advantages_for_length(
@@ -131,19 +149,10 @@ def maybe_clip_chunk_advantages_for_length(
 
 def compute_chunk_rewards(prefix_scores: Sequence[float]) -> list[float]:
     """
-    Convert prefix scores into raw per-chunk rewards:
-
-    r_1 = s_1
-    r_t = s_t - s_{t-1} for t > 1
+    Use the normalized score for each prefix as that chunk's reward.
     """
 
-    if not prefix_scores:
-        return []
-
-    rewards = [float(prefix_scores[0])]
-    for idx in range(1, len(prefix_scores)):
-        rewards.append(float(prefix_scores[idx] - prefix_scores[idx - 1]))
-    return rewards
+    return [float(score) for score in prefix_scores]
 
 
 def assign_chunk_values_to_output_tokens(

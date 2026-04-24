@@ -3,6 +3,7 @@ import random
 
 import aiohttp
 import os
+import torch
 from omegaconf import DictConfig
 from pydantic import BaseModel
 from pipelinerl.rollouts import RolloutResult, BaseMetrics
@@ -18,7 +19,9 @@ from .process_reward_utils import (
     compute_chunk_rewards,
     expand_output_token_values_to_labels,
     maybe_clip_chunk_advantages_for_length,
+    normalize_prefix_scores,
     split_reward_chunks,
+    validate_unit_interval,
 )
 from .verifier_api import (
     verify_answer_rpc,
@@ -154,16 +157,20 @@ async def generate_math_rollout(
     if process_reward_enabled:
         output_token_ids = [token_id for token_id in trace.labels if token_id != -100]
         if output_token_ids:
-            decode_token = lambda token_id: llm.tokenizer.decode(
-                [token_id],
-                skip_special_tokens=False,
-                clean_up_tokenization_spaces=False,
-            )
             delimiter = process_grader_cfg.get("delimiter", DEFAULT_STEP_DELIMITER)
+            delimiter_token_text = str(delimiter).rstrip()
+            delimiter_token_ids = llm.tokenizer.encode(
+                delimiter_token_text,
+                add_special_tokens=False,
+            )
+            if len(delimiter_token_ids) != 1:
+                raise ValueError(
+                    f"Process reward delimiter {delimiter_token_text!r} must tokenize to exactly one token, "
+                    f"got {delimiter_token_ids}"
+                )
             chunks = split_reward_chunks(
-                output_token_ids,
-                decode_token=decode_token,
-                delimiter=delimiter,
+                torch.tensor(output_token_ids, dtype=torch.long),
+                delimiter_token_id=int(delimiter_token_ids[0]),
             )
             chunk_token_spans = [chunk.token_span for chunk in chunks]
             prefix_texts = [
@@ -190,44 +197,70 @@ async def generate_math_rollout(
                 provider=process_grader_cfg.get("provider", None),
                 max_concurrency=process_grader_cfg.get("max_concurrency", None),
             )
-            prefix_scores = [float(result.score) for result in prefix_results]
-            chunk_rewards = compute_chunk_rewards(prefix_scores)
-            raw_chunk_advantages = compute_chunk_advantages(prefix_scores)
-            chunk_advantages, is_overflow, is_length_clipped = maybe_clip_chunk_advantages_for_length(
-                output_token_ids=output_token_ids,
-                eos_token_id=getattr(llm.tokenizer, "eos_token_id", None),
-                chunk_advantages=raw_chunk_advantages,
-                is_clip_length=bool(process_grader_cfg.get("is_clip_length", False)),
-            )
-            normalize_by_token_count = bool(process_grader_cfg.get("normalize_by_token_count", True))
-            token_rewards_output = assign_chunk_values_to_output_tokens(
-                num_output_tokens=len(output_token_ids),
-                chunk_token_spans=chunk_token_spans,
-                chunk_values=chunk_rewards,
-                normalize_by_token_count=normalize_by_token_count,
-            )
-            token_advantages_output = assign_chunk_values_to_output_tokens(
-                num_output_tokens=len(output_token_ids),
-                chunk_token_spans=chunk_token_spans,
-                chunk_values=chunk_advantages,
-                normalize_by_token_count=normalize_by_token_count,
-            )
-            trace.token_rewards = expand_output_token_values_to_labels(
-                labels=trace.labels,
-                output_token_values=token_rewards_output,
-            )
-            trace.token_advantages = expand_output_token_values_to_labels(
-                labels=trace.labels,
-                output_token_values=token_advantages_output,
-            )
-            trace.reward = prefix_scores[-1] if prefix_scores else 0.0
+            raw_prefix_scores = [float(result.score) for result in prefix_results]
+            prefix_scores = normalize_prefix_scores(raw_prefix_scores)
+            validate_unit_interval(prefix_scores, "process_reward.prefix_scores")
+            invalid_prefix_indices = [
+                result.prefix_index
+                for result in prefix_results
+                if result.score <= 0 or getattr(result, "parse_failed", False)
+            ]
+            if invalid_prefix_indices:
+                chunk_rewards = [0.0] * len(prefix_scores)
+                raw_chunk_advantages = [0.0] * len(prefix_scores)
+                chunk_advantages = [0.0] * len(prefix_scores)
+                is_overflow = False
+                is_length_clipped = False
+                trace.token_rewards = [0.0] * len(trace.labels)
+                trace.token_advantages = [0.0] * len(trace.labels)
+                trace.reward = 0.0
+                # Mask labels/logprobs so this trajectory contributes no policy,
+                # KL, or entropy update if it reaches finetuning.
+                trace.labels = [-100] * len(trace.labels)
+                trace.logprobs = []
+                trace.ref_logprobs = []
+            else:
+                chunk_rewards = compute_chunk_rewards(prefix_scores)
+                raw_chunk_advantages = compute_chunk_advantages(prefix_scores)
+                chunk_advantages, is_overflow, is_length_clipped = maybe_clip_chunk_advantages_for_length(
+                    output_token_ids=output_token_ids,
+                    eos_token_id=getattr(llm.tokenizer, "eos_token_id", None),
+                    chunk_advantages=raw_chunk_advantages,
+                    is_clip_length=bool(process_grader_cfg.get("is_clip_length", False)),
+                )
+                normalize_by_token_count = bool(process_grader_cfg.get("normalize_by_token_count", True))
+                token_rewards_output = assign_chunk_values_to_output_tokens(
+                    num_output_tokens=len(output_token_ids),
+                    chunk_token_spans=chunk_token_spans,
+                    chunk_values=chunk_rewards,
+                    normalize_by_token_count=normalize_by_token_count,
+                )
+                token_advantages_output = assign_chunk_values_to_output_tokens(
+                    num_output_tokens=len(output_token_ids),
+                    chunk_token_spans=chunk_token_spans,
+                    chunk_values=chunk_advantages,
+                    normalize_by_token_count=normalize_by_token_count,
+                )
+                trace.token_rewards = expand_output_token_values_to_labels(
+                    labels=trace.labels,
+                    output_token_values=token_rewards_output,
+                )
+                trace.token_advantages = expand_output_token_values_to_labels(
+                    labels=trace.labels,
+                    output_token_values=token_advantages_output,
+                )
+                trace.reward = prefix_scores[-1] if prefix_scores else 0.0
+                validate_unit_interval([trace.reward], "process_reward.reward")
             trace.metadata["process_reward"] = {
                 "delimiter": delimiter,
                 "chunk_token_spans": chunk_token_spans,
+                "raw_prefix_scores": raw_prefix_scores,
                 "prefix_scores": prefix_scores,
                 "chunk_rewards": chunk_rewards,
                 "raw_chunk_advantages": raw_chunk_advantages,
                 "chunk_advantages": chunk_advantages,
+                "is_valid": not bool(invalid_prefix_indices),
+                "invalid_prefix_indices": invalid_prefix_indices,
                 "is_overflow": is_overflow,
                 "is_length_clipped": is_length_clipped,
                 "judge_outputs": [
@@ -236,6 +269,8 @@ async def generate_math_rollout(
                         "score": result.score,
                         "aligned_path": result.aligned_path,
                         "why": result.why,
+                        "parse_failed": getattr(result, "parse_failed", False),
+                        "failure_cause": getattr(result, "failure_cause", None),
                         "output_text": result.output_text,
                     }
                     for result in prefix_results
@@ -246,7 +281,14 @@ async def generate_math_rollout(
                 "process_reward/mean_prefix_score": (
                     sum(prefix_scores) / len(prefix_scores) if prefix_scores else 0.0
                 ),
+                "process_reward/raw_final_prefix_score": (
+                    raw_prefix_scores[-1] if raw_prefix_scores else 0.0
+                ),
+                "process_reward/raw_mean_prefix_score": (
+                    sum(raw_prefix_scores) / len(raw_prefix_scores) if raw_prefix_scores else 0.0
+                ),
                 "process_reward/num_prefixes": len(prefix_scores),
+                "process_reward/invalid_trace": 1 if invalid_prefix_indices else 0,
             }
         else:
             trace.token_rewards = [0.0] * len(trace.labels)
@@ -255,6 +297,7 @@ async def generate_math_rollout(
             trace.metadata["process_reward"] = {
                 "delimiter": process_grader_cfg.get("delimiter", DEFAULT_STEP_DELIMITER),
                 "chunk_token_spans": [],
+                "raw_prefix_scores": [],
                 "prefix_scores": [],
                 "chunk_rewards": [],
                 "raw_chunk_advantages": [],
@@ -266,7 +309,7 @@ async def generate_math_rollout(
 
         metrics = Metrics(
             reward=trace.reward,
-            success=trace.reward == 5,
+            success=trace.reward >= 1.0,
             no_error=True,
             no_answer=not bool(output_token_ids),
             penalty=0.0,
