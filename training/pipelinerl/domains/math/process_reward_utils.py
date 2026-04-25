@@ -52,8 +52,8 @@ def split_reward_chunks(
     )
     if not delimiter_starts:
         token_spans = [(0, num_tokens)]
-    else:
-        token_spans = [
+    else:        
+        token_spans = [(0, delimiter_starts[0])] + [
             (start, next_start)
             for start, next_start in zip(delimiter_starts, delimiter_starts[1:])
         ]

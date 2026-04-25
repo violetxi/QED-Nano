@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=dense_pr
+#SBATCH --job-name=dense_pr_entropy0
 #SBATCH --account=ingrai
 #SBATCH --partition=hai
 #SBATCH --nodes=1
@@ -79,10 +79,11 @@ srun -w "$HOSTLIST" --ntasks-per-node=1 \
     python -m pipelinerl.launch \
       --config-name=exp_rl_pr_stage1 \
       wandb.wandb_project_name=prl-proof-qwen4b-gemini-stage1 \
-      output_dir=results/dense_pr \
+      output_dir=results/dense_pr_entropy0 \
       world.actor_start_port=18120 \
       world.actor_fraction=6 \
       world.finetune_fraction=2 \
+      finetune.rl.entropy_bonus=0 \
       finetune.seq_length=24576 \
       finetune.seq_parallel=2 \
       finetune.save_checkpoint_steps=20 \
