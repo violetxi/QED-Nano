@@ -1,4 +1,4 @@
-model: "violetxi/exp-stage1-sft"
+model: "violetxi/stage1_proof_sft"
 model_revision: "main"
 api: custom
 api_key_env: VLLM_API_KEY
@@ -8,5 +8,5 @@ temperature: 0.8
 read_cost: 0.0
 write_cost: 0.0
 concurrent_requests: 1024
-human_readable_id: violetxi/exp-stage1-sft
+human_readable_id: violetxi/stage1_proof_sft
 date: "2026-03-30"

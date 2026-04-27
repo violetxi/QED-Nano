@@ -65,46 +65,6 @@ uv run python scripts/stats.py outputs/qwen3-4b-instruct-imoproofbench-summary-g
 uv run python scripts/stats.py outputs/qwen3-4b-instruct-proofbench-summary-graded.jsonl
 
 # ============================================================
-# 24k response length
-# ============================================================
-
-# 3a: IMOProofBench (generate + summarize, 24k)
-uv run python scripts/run_summary.py \
-  --model-config vllm/vllm-qwen-qwen3-4b-instruct-4b-2507-24k \
-  --output-path outputs/qwen3-4b-instruct-imoproofbench-summary-24k.jsonl \
-  --overwrite \
-  --n 16 \
-  --summary-max-tokens 16384
-
-# 3b: Grade summarized IMOProofBench (24k)
-uv run python scripts/eval.py \
-  --model-config openai/gpt-5-nano \
-  --data-path outputs/qwen3-4b-instruct-imoproofbench-summary-24k.jsonl \
-  --output-path outputs/qwen3-4b-instruct-imoproofbench-summary-24k-graded.jsonl
-
-# 3c: IMOProofBench stats (24k)
-uv run python scripts/stats.py outputs/qwen3-4b-instruct-imoproofbench-summary-24k-graded.jsonl
-
-# 3d: ProofBench (generate + summarize, 24k)
-uv run python scripts/run_summary.py \
-  --model-config vllm/vllm-qwen-qwen3-4b-instruct-4b-2507-24k \
-  --data-path lm-provers/ProofBench \
-  --output-path outputs/qwen3-4b-instruct-proofbench-summary-24k.jsonl \
-  --overwrite \
-  --n 16 \
-  --summary-max-tokens 16384
-
-# 3e: Grade summarized ProofBench (24k)
-uv run python scripts/eval.py \
-  --model-config openai/gpt-5-nano \
-  --data-path outputs/qwen3-4b-instruct-proofbench-summary-24k.jsonl \
-  --output-path outputs/qwen3-4b-instruct-proofbench-summary-24k-graded.jsonl \
-  --proofbench
-
-# 3f: ProofBench stats (24k)
-uv run python scripts/stats.py outputs/qwen3-4b-instruct-proofbench-summary-24k-graded.jsonl
-
-# ============================================================
 # 128 samples, 16k response length
 # ============================================================
 
@@ -141,46 +101,6 @@ uv run python scripts/eval.py \
 
 # 4f: ProofBench stats (n128)
 uv run python scripts/stats.py outputs/qwen3-4b-instruct-proofbench-n128-summary-graded.jsonl
-
-# ============================================================
-# 128 samples, 24k response length
-# ============================================================
-
-# # 5a: IMOProofBench (generate + summarize, n128, 24k)
-# uv run python scripts/run_summary.py \
-#   --model-config vllm/vllm-qwen-qwen3-4b-instruct-4b-2507-24k \
-#   --output-path outputs/qwen3-4b-instruct-imoproofbench-n128-summary-24k.jsonl \
-#   --overwrite \
-#   --n 128 \
-#   --summary-max-tokens 16384
-
-# # 5b: Grade summarized IMOProofBench (n128, 24k)
-# uv run python scripts/eval.py \
-#   --model-config openai/gpt-5-nano \
-#   --data-path outputs/qwen3-4b-instruct-imoproofbench-n128-summary-24k.jsonl \
-#   --output-path outputs/qwen3-4b-instruct-imoproofbench-n128-summary-24k-graded.jsonl
-
-# 5c: IMOProofBench stats (n128, 24k)
-uv run python scripts/stats.py outputs/qwen3-4b-instruct-imoproofbench-n128-summary-24k-graded.jsonl
-
-# 5d: ProofBench (generate + summarize, n128, 24k)
-uv run python scripts/run_summary.py \
-  --model-config vllm/vllm-qwen-qwen3-4b-instruct-4b-2507-24k \
-  --data-path lm-provers/ProofBench \
-  --output-path outputs/qwen3-4b-instruct-proofbench-n128-summary-24k.jsonl \
-  --overwrite \
-  --n 128 \
-  --summary-max-tokens 16384
-
-# 5e: Grade summarized ProofBench (n128, 24k)
-uv run python scripts/eval.py \
-  --model-config openai/gpt-5-nano \
-  --data-path outputs/qwen3-4b-instruct-proofbench-n128-summary-24k.jsonl \
-  --output-path outputs/qwen3-4b-instruct-proofbench-n128-summary-24k-graded.jsonl \
-  --proofbench
-
-# 5f: ProofBench stats (n128, 24k)
-uv run python scripts/stats.py outputs/qwen3-4b-instruct-proofbench-n128-summary-24k-graded.jsonl
 
 # Step 6: Kill the vLLM server (Ctrl+C in pane 1, or:)
 # pkill -f "vllm.entrypoints.openai.api_server --model Qwen/Qwen3-4B-Instruct-2507"
