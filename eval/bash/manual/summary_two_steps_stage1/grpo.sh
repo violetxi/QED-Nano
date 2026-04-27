@@ -21,8 +21,8 @@ python -m vllm.entrypoints.openai.api_server \
   --port 8000 \
   --dtype bfloat16 \
   --max-model-len 49152 \
-  --gpu-memory-utilization 0.8 \
-  --data-parallel-size 8 \
+  --gpu-memory-utilization 0.85 \
+  --data-parallel-size 4 \
   --enable-chunked-prefill \
   --max-num-batched-tokens 40000 \
   --max-num-seqs 2048 \
