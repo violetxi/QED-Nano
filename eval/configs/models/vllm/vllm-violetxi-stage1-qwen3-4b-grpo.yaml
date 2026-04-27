@@ -7,6 +7,6 @@ max_tokens: 16384
 temperature: 0.8
 read_cost: 0.0
 write_cost: 0.0
-concurrent_requests: 1024
+concurrent_requests: 2048
 human_readable_id: violetxi/proof_stage1_qwen3-4b_grpo
 date: "2026-03-30"
