@@ -30,77 +30,39 @@ python -m vllm.entrypoints.openai.api_server \
 
 # Step 2: In another pane, run these one by one (from eval/ directory)
 
-# 2a: IMOProofBench (generate + summarize)
-uv run python scripts/run_summary.py \
-  --model-config vllm/vllm-violetxi-stage1-qwen3-4b-sft \
-  --output-path outputs/stage1_proof-qwen3-4b-sft-imoproofbench-summary.jsonl \
-  --overwrite \
-  --n 16
+# # 2a: IMOProofBench (generate + summarize)
+# uv run python scripts/run_summary.py \
+#   --model-config vllm/vllm-violetxi-stage1-qwen3-4b-sft \
+#   --output-path outputs/stage1_proof-qwen3-4b-sft-imoproofbench-summary.jsonl \
+#   --overwrite \
+#   --n 16
 
-# 2b: Grade summarized IMOProofBench
-uv run python scripts/eval.py \
-  --model-config openai/gpt-5-nano \
-  --data-path outputs/stage1_proof-qwen3-4b-sft-imoproofbench-summary.jsonl \
-  --output-path outputs/stage1_proof-qwen3-4b-sft-imoproofbench-summary-graded.jsonl
+# # 2b: Grade summarized IMOProofBench
+# uv run python scripts/eval.py \
+#   --model-config google/gemini-3.1-flash-medium \
+#   --data-path outputs/stage1_proof-qwen3-4b-sft-imoproofbench-summary.jsonl \
+#   --output-path outputs/stage1_proof-qwen3-4b-sft-imoproofbench-summary-graded.jsonl
 
 # 2c: IMOProofBench stats
 uv run python scripts/stats.py outputs/stage1_proof-qwen3-4b-sft-imoproofbench-summary-graded.jsonl
 
-# 2d: ProofBench (generate + summarize)
-uv run python scripts/run_summary.py \
-  --model-config vllm/vllm-violetxi-stage1-qwen3-4b-sft \
-  --data-path lm-provers/ProofBench \
-  --output-path outputs/stage1_proof-qwen3-4b-sft-proofbench-summary.jsonl \
-  --overwrite \
-  --n 16
-
-# 2e: Grade summarized ProofBench
-uv run python scripts/eval.py \
-  --model-config openai/gpt-5-nano \
-  --data-path outputs/stage1_proof-qwen3-4b-sft-proofbench-summary.jsonl \
-  --output-path outputs/stage1_proof-qwen3-4b-sft-proofbench-summary-graded.jsonl \
-  --proofbench
-
-# 2f: ProofBench stats
-uv run python scripts/stats.py outputs/stage1-qwen3-4b-sft-proofbench-summary-graded.jsonl
-
-# ============================================================
-# 128 samples, 16k response length
-# ============================================================
-
-# # 4a: IMOProofBench (generate + summarize, n128)
+# # 2d: ProofBench (generate + summarize)
 # uv run python scripts/run_summary.py \
 #   --model-config vllm/vllm-violetxi-stage1-qwen3-4b-sft \
-#   --output-path outputs/stage1-qwen3-4b-sft-imoproofbench-n128-summary.jsonl \
+#   --data-path lm-provers/ProofBench \
+#   --output-path outputs/stage1_proof-qwen3-4b-sft-proofbench-summary.jsonl \
 #   --overwrite \
-#   --n 128
+#   --n 16
 
-# 4b: Grade summarized IMOProofBench (n128)
-uv run python scripts/eval.py \
-  --model-config openai/gpt-5-nano \
-  --data-path outputs/stage1-qwen3-4b-sft-imoproofbench-n128-summary.jsonl \
-  --output-path outputs/stage1-qwen3-4b-sft-imoproofbench-n128-summary-graded.jsonl
+# # 2e: Grade summarized ProofBench
+# uv run python scripts/eval.py \
+#   --model-config google/gemini-3.1-flash-medium \
+#   --data-path outputs/stage1_proof-qwen3-4b-sft-proofbench-summary.jsonl \
+#   --output-path outputs/stage1_proof-qwen3-4b-sft-proofbench-summary-graded.jsonl \
+#   --proofbench
 
-# 4c: IMOProofBench stats (n128)
-uv run python scripts/stats.py outputs/stage1-qwen3-4b-sft-imoproofbench-n128-summary-graded.jsonl
-
-# 4d: ProofBench (generate + summarize, n128)
-uv run python scripts/run_summary.py \
-  --model-config vllm/vllm-violetxi-stage1-qwen3-4b-sft \
-  --data-path lm-provers/ProofBench \
-  --output-path outputs/stage1-qwen3-4b-sft-proofbench-n128-summary.jsonl \
-  --overwrite \
-  --n 128
-
-# 4e: Grade summarized ProofBench (n128)
-uv run python scripts/eval.py \
-  --model-config openai/gpt-5-nano \
-  --data-path outputs/stage1-qwen3-4b-sft-proofbench-n128-summary.jsonl \
-  --output-path outputs/stage1-qwen3-4b-sft-proofbench-n128-summary-graded.jsonl \
-  --proofbench
-
-# 4f: ProofBench stats (n128)
-uv run python scripts/stats.py outputs/stage1-qwen3-4b-sft-proofbench-n128-summary-graded.jsonl
+# 2f: ProofBench stats
+uv run python scripts/stats.py outputs/stage1_proof-qwen3-4b-sft-proofbench-summary-graded.jsonl
 
 # Step 6: Kill the vLLM server (Ctrl+C in pane 1, or:)
 # pkill -f "vllm.entrypoints.openai.api_server --model violetxi/exp-stage1-sft"

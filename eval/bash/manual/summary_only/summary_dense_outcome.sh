@@ -41,13 +41,13 @@ uv run python scripts/run_summary.py \
 
 # 2c: Grade summarized IMOProofBench
 uv run python scripts/eval.py \
-  --model-config openai/gpt-5-nano \
+  --model-config google/gemini-3-pro \
   --data-path outputs/stage2-qwen3-4b-dense-outcome-imoproofbench-summary.jsonl \
   --output-path outputs/stage2-qwen3-4b-dense-outcome-imoproofbench-summary-graded.jsonl
 
 # 2d: Grade summarized ProofBench
 uv run python scripts/eval.py \
-  --model-config openai/gpt-5-nano \
+  --model-config google/gemini-3-pro \
   --data-path outputs/stage2-qwen3-4b-dense-outcome-proofbench-summary.jsonl \
   --output-path outputs/stage2-qwen3-4b-dense-outcome-proofbench-summary-graded.jsonl \
   --proofbench

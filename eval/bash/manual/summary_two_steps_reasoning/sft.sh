@@ -39,7 +39,7 @@ uv run python scripts/run_summary.py \
 
 # 2b: Grade reasoning trace for IMOProofBench
 uv run python scripts/eval.py \
-  --model-config openai/gpt-5-nano \
+  --model-config google/gemini-3-pro \
   --data-path outputs/stage2-qwen3-4b-sft-imoproofbench-summary.jsonl \
   --output-path outputs/stage2-qwen3-4b-sft-imoproofbench-summary-reasoning-graded.jsonl \
   --model-solution-column reasoning_trace
@@ -57,7 +57,7 @@ uv run python scripts/run_summary.py \
 
 # 2e: Grade reasoning trace for ProofBench
 uv run python scripts/eval.py \
-  --model-config openai/gpt-5-nano \
+  --model-config google/gemini-3-pro \
   --data-path outputs/stage2-qwen3-4b-sft-proofbench-summary.jsonl \
   --output-path outputs/stage2-qwen3-4b-sft-proofbench-summary-reasoning-graded.jsonl \
   --model-solution-column reasoning_trace \

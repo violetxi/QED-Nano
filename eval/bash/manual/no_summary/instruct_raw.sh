@@ -39,7 +39,7 @@ uv run python scripts/run.py \
 
 # 2b: Grade IMOProofBench
 uv run python scripts/eval.py \
-  --model-config  openai/gpt-5-nano \
+  --model-config  google/gemini-3-pro \
   --data-path outputs/stage2-qwen3-4b-instruct-raw-imoproofbench.jsonl \
   --output-path outputs/stage2-qwen3-4b-instruct-raw-imoproofbench-graded.jsonl
 
@@ -56,7 +56,7 @@ uv run python scripts/run.py \
 
 # 2e: Grade ProofBench
 uv run python scripts/eval.py \
-  --model-config  openai/gpt-5-nano \
+  --model-config  google/gemini-3-pro \
   --data-path outputs/stage2-qwen3-4b-instruct-raw-proofbench.jsonl \
   --output-path outputs/stage2-qwen3-4b-instruct-raw-proofbench-graded.jsonl \
   --proofbench
