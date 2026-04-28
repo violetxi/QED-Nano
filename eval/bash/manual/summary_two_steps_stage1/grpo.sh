@@ -54,12 +54,12 @@ uv run python scripts/stats.py outputs/stage1_proof-qwen3-4b-grpo-imoproofbench-
 #   --overwrite \
 #   --n 16
 
-# 2e: Grade summarized ProofBench
-uv run python scripts/eval.py \
-  --model-config google/gemini-3.1-flash-medium \
-  --data-path outputs/stage1_proof-qwen3-4b-grpo-proofbench-summary.jsonl \
-  --output-path outputs/stage1_proof-qwen3-4b-grpo-proofbench-summary-graded.jsonl \
-  --proofbench
+# # 2e: Grade summarized ProofBench
+# uv run python scripts/eval.py \
+#   --model-config google/gemini-3.1-flash-medium \
+#   --data-path outputs/stage1_proof-qwen3-4b-grpo-proofbench-summary.jsonl \
+#   --output-path outputs/stage1_proof-qwen3-4b-grpo-proofbench-summary-graded.jsonl \
+#   --proofbench
 
 # 2f: ProofBench stats
 uv run python scripts/stats.py outputs/stage1_proof-qwen3-4b-grpo-proofbench-summary-graded.jsonl

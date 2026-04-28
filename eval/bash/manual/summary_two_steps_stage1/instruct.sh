@@ -21,42 +21,42 @@ python -m vllm.entrypoints.openai.api_server \
   --port 8000 \
   --dtype bfloat16 \
   --max-model-len 49152 \
-  --gpu-memory-utilization 0.8 \
-  --data-parallel-size 8 \
+  --gpu-memory-utilization 0.9 \
+  --data-parallel-size 4 \
   --enable-chunked-prefill \
   --max-num-batched-tokens 40000 \
   --max-num-seqs 2048 \
-  --api-key token-abc1234
+  --api-key token-abc123
 
 # Step 2: In another pane, run these one by one (from eval/ directory)
 
-# 2a: IMOProofBench (generate + summarize)
-uv run python scripts/run_summary.py \
-  --model-config vllm/vllm-qwen-qwen3-4b-instruct-4b-2507 \
-  --output-path outputs/qwen3-4b-instruct-imoproofbench-summary.jsonl \
-  --overwrite \
-  --n 16
+# # 2a: IMOProofBench (generate + summarize)
+# uv run python scripts/run_summary.py \
+#   --model-config vllm/vllm-qwen-qwen3-4b-instruct-4b-2507 \
+#   --output-path outputs/qwen3-4b-instruct-imoproofbench-summary.jsonl \
+#   --overwrite \
+#   --n 16
 
 # 2b: Grade summarized IMOProofBench
 uv run python scripts/eval.py \
-  --model-config google/gemini-3-pro \
+  --model-config google/gemini-3.1-flash-medium \
   --data-path outputs/qwen3-4b-instruct-imoproofbench-summary.jsonl \
   --output-path outputs/qwen3-4b-instruct-imoproofbench-summary-graded.jsonl
 
 # 2c: IMOProofBench stats
 uv run python scripts/stats.py outputs/qwen3-4b-instruct-imoproofbench-summary-graded.jsonl
 
-# 2d: ProofBench (generate + summarize)
-uv run python scripts/run_summary.py \
-  --model-config vllm/vllm-qwen-qwen3-4b-instruct-4b-2507 \
-  --data-path lm-provers/ProofBench \
-  --output-path outputs/qwen3-4b-instruct-proofbench-summary.jsonl \
-  --overwrite \
-  --n 16
+# # 2d: ProofBench (generate + summarize)
+# uv run python scripts/run_summary.py \
+#   --model-config vllm/vllm-qwen-qwen3-4b-instruct-4b-2507 \
+#   --data-path lm-provers/ProofBench \
+#   --output-path outputs/qwen3-4b-instruct-proofbench-summary.jsonl \
+#   --overwrite \
+#   --n 16
 
 # 2e: Grade summarized ProofBench
 uv run python scripts/eval.py \
-  --model-config google/gemini-3-pro \
+  --model-config google/gemini-3.1-flash-medium \
   --data-path outputs/qwen3-4b-instruct-proofbench-summary.jsonl \
   --output-path outputs/qwen3-4b-instruct-proofbench-summary-graded.jsonl \
   --proofbench
