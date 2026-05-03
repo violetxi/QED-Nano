@@ -7,6 +7,6 @@ max_tokens: 16384
 temperature: 0.8
 read_cost: 0.0
 write_cost: 0.0
-concurrent_requests: 1024
+concurrent_requests: 2048
 human_readable_id: Qwen/Qwen3-4B-Instruct-2507
 date: "2026-02-11"

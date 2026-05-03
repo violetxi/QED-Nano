@@ -58,7 +58,7 @@ The `--model-config` here is the **judge** model, not your model.
 
 ```bash
 uv run python scripts/eval.py \
-  --model-config openai/gpt-5-nano \
+  --model-config google/gemini-3-pro \
   --data-path outputs/stage2-qwen3-4b-imoproofbench.jsonl \
   --output-path outputs/stage2-qwen3-4b-imoproofbench-graded.jsonl
 ```

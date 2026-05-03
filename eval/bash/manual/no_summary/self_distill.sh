@@ -38,7 +38,7 @@ python -m vllm.entrypoints.openai.api_server \
 
 # # 2b: Grade IMOProofBench
 # uv run python scripts/eval.py \
-#   --model-config  openai/gpt-5-nano \
+#   --model-config  google/gemini-3-pro \
 #   --data-path outputs/stage2-qwen3-4b-self-distill-imoproofbench.jsonl \
 #   --output-path outputs/stage2-qwen3-4b-self-distill-imoproofbench-graded.jsonl
 
@@ -55,7 +55,7 @@ uv run python scripts/stats.py outputs/stage2-qwen3-4b-self-distill-imoproofbenc
 
 # # 2e: Grade ProofBench
 # uv run python scripts/eval.py \
-#   --model-config  openai/gpt-5-nano \
+#   --model-config  google/gemini-3-pro \
 #   --data-path outputs/stage2-qwen3-4b-self-distill-proofbench.jsonl \
 #   --output-path outputs/stage2-qwen3-4b-self-distill-proofbench-graded.jsonl \
 #   --proofbench

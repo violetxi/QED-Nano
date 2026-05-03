@@ -7,13 +7,19 @@ import os
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Evaluate AnswerBench dataset.")
+    parser = argparse.ArgumentParser(description="Evaluate proof or answer outputs with a selectable submission column.")
     parser.add_argument("--model-config", type=str, required=True, help="Path to the model configuration file. Relative to configs/models/")
     parser.add_argument("--prompt", type=str, default=None, help="Path to the prompt template file.")
     parser.add_argument("--data-path", type=str, required=True, help="Path to the model solutions file.")
     parser.add_argument("--output-path", type=str, default=None, help="Path to save the results. By default, same file as data_path.")
     parser.add_argument("--problem-column", type=str, default="problem", help="Column name for problems in the dataset.")
-    parser.add_argument("--model-solution-column", type=str, default="model_solution", help="Column name for model solutions in the dataset.")
+    parser.add_argument(
+        "--submission-column",
+        dest="submission_column",
+        type=str,
+        default="model_solution",
+        help="Column name for the text being graded, e.g. `model_solution` or `reasoning_trace`.",
+    )
     parser.add_argument("--solution-column", type=str, default="solution", help="Column name for student solutions in the dataset.")
     parser.add_argument("--answer-column", type=str, default="answer", help="Column name for correct answers in the dataset.")
     parser.add_argument("--grading-column", type=str, default="grading_guidelines", help="Column name for grading guidelines in the dataset.")
@@ -49,7 +55,7 @@ if __name__ == "__main__":
     # dataset = dataset.select(range(min(10, len(dataset))))
 
     questions = list(dataset[args.problem_column])
-    solutions = list(dataset[args.model_solution_column])
+    solutions = list(dataset[args.submission_column])
 
     if args.final_answer:
         answers = list(dataset[args.answer_column])

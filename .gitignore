@@ -220,3 +220,5 @@ eval/outputs*
 slurm_logs/
 AGENTS.md
 ignore_*
+.gitignore
+model_solution_annotations/

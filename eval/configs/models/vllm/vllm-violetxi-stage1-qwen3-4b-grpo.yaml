@@ -1,4 +1,4 @@
-model: "violetxi/exp_stage1_qwen3-4b_grpo"
+model: "violetxi/proof_stage1_qwen3-4b_grpo"
 model_revision: "main"
 api: custom
 api_key_env: VLLM_API_KEY
@@ -7,6 +7,6 @@ max_tokens: 16384
 temperature: 0.8
 read_cost: 0.0
 write_cost: 0.0
-concurrent_requests: 1024
-human_readable_id: violetxi/exp_stage1_qwen3-4b_grpo
+concurrent_requests: 2048
+human_readable_id: violetxi/proof_stage1_qwen3-4b_grpo
 date: "2026-03-30"

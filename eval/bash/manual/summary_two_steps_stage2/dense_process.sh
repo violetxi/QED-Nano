@@ -39,7 +39,7 @@ python -m vllm.entrypoints.openai.api_server \
 
 # # 2b: Grade summarized IMOProofBench
 # uv run python scripts/eval.py \
-#   --model-config openai/gpt-5-nano \
+#   --model-config google/gemini-3-pro \
 #   --data-path outputs/stage2-qwen3-4b-dense-process-imoproofbench-summary.jsonl \
 #   --output-path outputs/stage2-qwen3-4b-dense-process-imoproofbench-summary-graded.jsonl
 
@@ -56,7 +56,7 @@ uv run python scripts/stats.py outputs/stage2-qwen3-4b-dense-process-imoproofben
 
 # # 2e: Grade summarized ProofBench
 # uv run python scripts/eval.py \
-#   --model-config openai/gpt-5-nano \
+#   --model-config google/gemini-3-pro \
 #   --data-path outputs/stage2-qwen3-4b-dense-process-proofbench-summary.jsonl \
 #   --output-path outputs/stage2-qwen3-4b-dense-process-proofbench-summary-graded.jsonl \
 #   --proofbench
@@ -78,7 +78,7 @@ uv run python scripts/run_summary.py \
 
 # 3b: Grade summarized IMOProofBench (24k)
 uv run python scripts/eval.py \
-  --model-config openai/gpt-5-nano \
+  --model-config google/gemini-3-pro \
   --data-path outputs/stage2-qwen3-4b-dense-process-imoproofbench-summary-24k.jsonl \
   --output-path outputs/stage2-qwen3-4b-dense-process-imoproofbench-summary-24k-graded.jsonl
 
@@ -96,7 +96,7 @@ uv run python scripts/run_summary.py \
 
 # 3e: Grade summarized ProofBench (24k)
 uv run python scripts/eval.py \
-  --model-config openai/gpt-5-nano \
+  --model-config google/gemini-3-pro \
   --data-path outputs/stage2-qwen3-4b-dense-process-proofbench-summary-24k.jsonl \
   --output-path outputs/stage2-qwen3-4b-dense-process-proofbench-summary-24k-graded.jsonl \
   --proofbench
