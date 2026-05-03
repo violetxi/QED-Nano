@@ -34,6 +34,7 @@ python -m vllm.entrypoints.openai.api_server \
 # uv run python scripts/run_summary.py \
 #   --model-config vllm/vllm-violetxi-stage1-qwen3-4b-dense-process \
 #   --output-path outputs/stage1_proof-qwen3-4b-dense-process-imoproofbench-summary.jsonl \
+#   --output-path outputs/stage1_proof-qwen3-4b-dense-process-imoproofbench-summary.jsonl \
 #   --overwrite \
 #   --n 16
 
@@ -55,11 +56,13 @@ uv run python scripts/stats.py outputs/stage1_proof-qwen3-4b-dense-process-imopr
 
 # 2c: IMOProofBench stats
 uv run python scripts/stats.py outputs/stage1_proof-qwen3-4b-dense-process-imoproofbench-summary-graded.jsonl
+uv run python scripts/stats.py outputs/stage1_proof-qwen3-4b-dense-process-imoproofbench-summary-graded.jsonl
 
 # # 2d: ProofBench (generate + summarize)
 # uv run python scripts/run_summary.py \
 #   --model-config vllm/vllm-violetxi-stage1-qwen3-4b-dense-process \
 #   --data-path lm-provers/ProofBench \
+#   --output-path outputs/stage1_proof-qwen3-4b-dense-process-proofbench-summary.jsonl \
 #   --output-path outputs/stage1_proof-qwen3-4b-dense-process-proofbench-summary.jsonl \
 #   --overwrite \
 #   --n 16

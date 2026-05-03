@@ -222,3 +222,4 @@ AGENTS.md
 ignore_*
 .gitignore
 model_solution_annotations/
+reasoning_trace_annotations/

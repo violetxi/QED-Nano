@@ -17,6 +17,7 @@ export CC=/cm/local/apps/gcc/13.1.0/bin/gcc
 # Step 1: Start vLLM server (runs in foreground — use a separate tmux pane)
 python -m vllm.entrypoints.openai.api_server \
   --model violetxi/proof_stage1_qwen3-4b_grpo \
+  --model violetxi/proof_stage1_qwen3-4b_grpo \
   --host 0.0.0.0 \
   --port 8000 \
   --dtype bfloat16 \
@@ -33,6 +34,7 @@ python -m vllm.entrypoints.openai.api_server \
 # # 2a: IMOProofBench (generate + summarize)
 # uv run python scripts/run_summary.py \
 #   --model-config vllm/vllm-violetxi-stage1-qwen3-4b-grpo \
+#   --output-path outputs/stage1_proof-qwen3-4b-grpo-imoproofbench-summary.jsonl \
 #   --output-path outputs/stage1_proof-qwen3-4b-grpo-imoproofbench-summary.jsonl \
 #   --overwrite \
 #   --n 16
@@ -55,11 +57,13 @@ uv run python scripts/stats.py outputs/stage1_proof-qwen3-4b-grpo-imoproofbench-
 
 # 2c: IMOProofBench stats
 uv run python scripts/stats.py outputs/stage1_proof-qwen3-4b-grpo-imoproofbench-summary-graded.jsonl
+uv run python scripts/stats.py outputs/stage1_proof-qwen3-4b-grpo-imoproofbench-summary-graded.jsonl
 
 # # 2d: ProofBench (generate + summarize)
 # uv run python scripts/run_summary.py \
 #   --model-config vllm/vllm-violetxi-stage1-qwen3-4b-grpo \
 #   --data-path lm-provers/ProofBench \
+#   --output-path outputs/stage1_proof-qwen3-4b-grpo-proofbench-summary.jsonl \
 #   --output-path outputs/stage1_proof-qwen3-4b-grpo-proofbench-summary.jsonl \
 #   --overwrite \
 #   --n 16
@@ -83,6 +87,7 @@ uv run python scripts/stats.py outputs/stage1_proof-qwen3-4b-grpo-imoproofbench-
 # uv run python scripts/stats.py outputs/stage1_proof-qwen3-4b-grpo-proofbench-summary-reasoning-graded.jsonl
 
 # 2f: ProofBench stats
+uv run python scripts/stats.py outputs/stage1_proof-qwen3-4b-grpo-proofbench-summary-graded.jsonl
 uv run python scripts/stats.py outputs/stage1_proof-qwen3-4b-grpo-proofbench-summary-graded.jsonl
 
 # Step 8: Kill the vLLM server (Ctrl+C in pane 1, or:)
